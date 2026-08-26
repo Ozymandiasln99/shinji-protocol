@@ -90,7 +90,7 @@
                     <i class="fa-solid fa-user-circle text-amber-400 text-sm" id="user-icon"></i>
                     <span id="user-name-label" class="font-medium text-slate-200">Visitante</span>
                     <span id="user-role-badge" class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">VISITANTE</span>
-                    <button onclick="openConfigCredentialsModal()" class="ml-1 text-slate-400 hover:text-amber-400 transition" title="Alterar Login/Senha">
+                    <button id="cfg-credentials-btn" onclick="openConfigCredentialsModal()" class="ml-1 text-slate-400 hover:text-amber-400 transition hidden" title="Alterar Login/Senha">
                         <i class="fa-solid fa-gear"></i>
                     </button>
                 </div>
@@ -105,7 +105,7 @@
     <!-- MAIN APP CONTAINER -->
     <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-6">
         
-        <!-- SIDEBAR COM SUBTÓPICOS (Visível quando aplicável) -->
+        <!-- SIDEBAR COM SUBTÓPICOS -->
         <aside id="sidebar-container" class="w-full md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 flex flex-col h-auto md:h-[calc(100vh-120px)] md:sticky md:top-24 transition-colors">
             <div class="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <h2 class="font-bold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
@@ -235,7 +235,7 @@
                     <input type="text" id="tab-label-simulados" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Aba Desempenho (Visível p/ Alunos e Professor)</label>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Aba Desempenho</label>
                     <input type="text" id="tab-label-desempenho" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
@@ -246,7 +246,7 @@
         </div>
     </div>
 
-    <!-- MODAL ALTERAR LOGIN / SENHA -->
+    <!-- MODAL ALTERAR LOGIN / SENHA (APENAS PARA USUÁRIOS LOGADOS) -->
     <div id="config-credentials-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 relative">
             <button onclick="closeConfigCredentialsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
@@ -402,7 +402,7 @@
         </div>
     </div>
 
-    <!-- MODAL GERADOR IA GEMINI (SEM NECESSIDADE DE CHAVE API) -->
+    <!-- MODAL GERADOR IA GEMINI (CORRIGIDO E TOTALMENTE FUNCIONAL) -->
     <div id="gemini-generator-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 relative">
             <button onclick="closeGeminiGeneratorModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
@@ -411,11 +411,17 @@
             <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2">
                 <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Assistente de IA Gemini Integrado
             </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Peça resumos teóricos, explicações de fórmulas ou questões automáticas diretamente para a IA.</p>
-            <div class="space-y-4">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Peça resumos teóricos, explicações de fórmulas ou resoluções diretamente para a IA.</p>
+            
+            <div class="mb-3">
+                <input type="password" id="gemini-api-key" placeholder="Chave da API Gemini (Opcional)" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                <span class="text-[10px] text-slate-400">Insira sua chave para respostas completas via API ou deixe em branco para o modo tutor.</span>
+            </div>
+
+            <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Sua Pergunta ou Instrução para o Gemini</label>
-                    <textarea id="gemini-prompt" rows="4" placeholder="Ex: Crie um resumo prático com 3 exemplos sobre Equações de 2º Grau para o CTRB." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Sua Pergunta para a IA</label>
+                    <textarea id="gemini-prompt" rows="3" placeholder="Ex: Crie um resumo prático com 3 exemplos sobre Equações de 2º Grau para o CTRB." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
                 </div>
                 <button onclick="callGeminiAPI()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-sm transition shadow flex items-center justify-center gap-2">
                     <i class="fa-solid fa-paper-plane"></i> Enviar Solicitação para IA
@@ -445,7 +451,7 @@
         let currentSimulado = null;
         let quillTopicEditor = null;
 
-        // HELPER PARA FORMATAR URL DE EMBED DO YOUTUBE (SUPORTA VIDEOS E PLAYLISTS)
+        // HELPER PARA FORMATAR URL DE EMBED DO YOUTUBE
         function getYoutubeEmbedUrl(input) {
             if (!input) return '';
             const str = input.trim();
@@ -560,20 +566,14 @@
             renderSidebarNav();
             initQuillEditor();
             
-            if (currentUser.role === 'aluno') {
-                currentMainTab = 'desempenho';
-            } else if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
+            if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
                 currentMainTab = 'edital';
             }
             switchMainTab(currentMainTab);
         });
 
         function handleLogoClick() {
-            if (currentUser.role === 'aluno') {
-                switchMainTab('desempenho');
-            } else {
-                switchMainTab('edital');
-            }
+            switchMainTab('edital');
         }
 
         function initQuillEditor() {
@@ -618,20 +618,32 @@
             }
         }
 
-        // RENDERIZAÇÃO DAS ABAS (OCULTA DESEMPENHO PARA VISITANTES)
+        // RENDERIZAÇÃO DAS ABAS (CORRIGIDO PARA QUE ALUNO VEJA TODAS AS ABAS DE CONTEÚDO)
         function renderNavTabs() {
             const nav = document.getElementById('main-nav');
             let html = '';
 
             if (currentUser.role === 'aluno') {
-                // Aluno logado visualiza a aba de Desempenho
+                // ALUNO LOGADO: visualiza as abas de conteúdo e a sua aba de desempenho
                 html = `
-                    <button id="tab-nav-desempenho" onclick="switchMainTab('desempenho')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-amber-500 text-slate-950 shadow">
-                        <i class="fa-solid fa-chart-line"></i> ${tabLabels.desempenho || 'Meu Desempenho'}
+                    <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
+                    </button>
+                    <button id="tab-nav-teoria" onclick="switchMainTab('teoria')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i class="fa-solid fa-book-open"></i> ${tabLabels.teoria}
+                    </button>
+                    <button id="tab-nav-questoes" onclick="switchMainTab('questoes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i class="fa-solid fa-list-check"></i> ${tabLabels.questoes}
+                    </button>
+                    <button id="tab-nav-simulados" onclick="switchMainTab('simulados')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i class="fa-solid fa-square-poll-vertical"></i> ${tabLabels.simulados}
+                    </button>
+                    <button id="tab-nav-desempenho" onclick="switchMainTab('desempenho')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i class="fa-solid fa-chart-line"></i> ${tabLabels.desempenho}
                     </button>
                 `;
             } else if (currentUser.role === 'admin') {
-                // Professor vê todas as abas, incluindo Desempenho e Painel
+                // PROFESSOR: vê todas as abas, incluindo o Painel do Professor
                 html = `
                     <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
                         <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
@@ -653,7 +665,7 @@
                     </button>
                 `;
             } else {
-                // VISITANTE: NÃO EXIBE A ABA DESEMPENHO
+                // VISITANTE: exibe somente as abas teóricas/conteúdo (sem desempenho e sem painel)
                 html = `
                     <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
                         <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
@@ -681,6 +693,7 @@
             const authBtn = document.getElementById('auth-btn');
             const adminTools = document.getElementById('admin-sidebar-tools');
             const sidebarContainer = document.getElementById('sidebar-container');
+            const cfgBtn = document.getElementById('cfg-credentials-btn');
 
             if (currentUser.role === 'admin') {
                 userBadge.classList.remove('hidden');
@@ -690,6 +703,7 @@
                 authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sair';
                 adminTools.classList.remove('hidden');
                 sidebarContainer.classList.remove('hidden');
+                if (cfgBtn) cfgBtn.classList.remove('hidden');
             } else if (currentUser.role === 'aluno') {
                 userBadge.classList.remove('hidden');
                 userNameLabel.textContent = currentUser.name;
@@ -697,7 +711,8 @@
                 userRoleBadge.className = 'bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
                 authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sair';
                 adminTools.classList.add('hidden');
-                sidebarContainer.classList.add('hidden');
+                sidebarContainer.classList.remove('hidden');
+                if (cfgBtn) cfgBtn.classList.remove('hidden');
             } else {
                 userBadge.classList.remove('hidden');
                 userNameLabel.textContent = 'Visitante';
@@ -706,6 +721,7 @@
                 authBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Entrar / Cadastrar';
                 adminTools.classList.add('hidden');
                 sidebarContainer.classList.remove('hidden');
+                if (cfgBtn) cfgBtn.classList.add('hidden'); // Oculta o ícone de engrenagem para visitantes
             }
         }
 
@@ -744,7 +760,11 @@
         }
 
         function openConfigCredentialsModal() {
-            document.getElementById('cfg-username').value = currentUser.name !== 'Visitante' ? currentUser.name : '';
+            if (currentUser.role === 'visitante') {
+                alert('Você precisa estar logado para alterar suas credenciais de acesso.');
+                return;
+            }
+            document.getElementById('cfg-username').value = currentUser.name || '';
             document.getElementById('cfg-password').value = currentUser.pass || '';
             document.getElementById('config-credentials-modal').classList.remove('hidden');
         }
@@ -793,7 +813,7 @@
             alert(`Cadastro realizado com sucesso! Bem-vindo(a), ${name}.`);
             closeAuthModal();
             updateUserUI();
-            switchMainTab('desempenho');
+            switchMainTab('edital');
         }
 
         function handleAdminLogin(e) {
@@ -815,7 +835,7 @@
                     syncStudentProgression();
                     updateUserUI();
                     closeAuthModal();
-                    switchMainTab('desempenho');
+                    switchMainTab('edital');
                 } else {
                     alert('Credenciais inválidas. Verifique seu usuário e senha.');
                 }
@@ -823,14 +843,11 @@
         }
 
         function switchMainTab(tab) {
-            // Trava de perfil do aluno e visitante
-            if (currentUser.role === 'aluno' && tab !== 'desempenho') {
-                tab = 'desempenho';
-            }
-            if (currentUser.role === 'visitante' && tab === 'desempenho') {
+            // Trava para que apenas o professor acesse a aba 'professor'
+            if ((tab === 'professor') && currentUser.role !== 'admin') {
                 tab = 'edital';
             }
-            if ((tab === 'professor') && currentUser.role !== 'admin') {
+            if (currentUser.role === 'visitante' && tab === 'desempenho') {
                 tab = 'edital';
             }
 
@@ -1524,13 +1541,8 @@
         }
 
         function openAddQuestionModal(defaultTopicId) {
-            const targetId = defaultTopicId || currentSubTopicId;
-            populateTargetTopicsDropdown(targetId);
-
             document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-plus-circle text-amber-500"></i> Adicionar Nova Questão';
-            document.getElementById('q-edit-topic-id').value = targetId;
             document.getElementById('q-edit-id').value = '';
-            document.getElementById('q-edit-difficulty').value = 'Média';
             document.getElementById('q-edit-statement').value = '';
             document.getElementById('q-edit-opt0').value = '';
             document.getElementById('q-edit-opt1').value = '';
@@ -1539,17 +1551,20 @@
             document.getElementById('q-edit-opt4').value = '';
             document.getElementById('q-edit-correct').value = '0';
             document.getElementById('q-edit-explanation').value = '';
+            
+            populateTargetTopicsDropdown(defaultTopicId || currentSubTopicId);
             document.getElementById('edit-question-modal').classList.remove('hidden');
         }
 
         function openEditQuestionModal(topicId, qId) {
-            populateTargetTopicsDropdown(topicId);
-            const q = masterQuestions[topicId].find(item => item.id === qId);
+            const list = masterQuestions[topicId] || [];
+            const q = list.find(item => item.id === qId);
+            if (!q) return;
 
             document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-file-pen text-amber-500"></i> Editar Questão';
-            document.getElementById('q-edit-topic-id').value = topicId;
             document.getElementById('q-edit-id').value = q.id;
-            document.getElementById('q-edit-difficulty').value = q.difficulty || 'Média';
+            document.getElementById('q-edit-topic-id').value = topicId;
+            document.getElementById('q-edit-difficulty').value = q.difficulty;
             document.getElementById('q-edit-statement').value = q.statement;
             document.getElementById('q-edit-opt0').value = q.options[0] || '';
             document.getElementById('q-edit-opt1').value = q.options[1] || '';
@@ -1557,7 +1572,9 @@
             document.getElementById('q-edit-opt3').value = q.options[3] || '';
             document.getElementById('q-edit-opt4').value = q.options[4] || '';
             document.getElementById('q-edit-correct').value = q.correct;
-            document.getElementById('q-edit-explanation').value = q.explanation;
+            document.getElementById('q-edit-explanation').value = q.explanation || '';
+
+            populateTargetTopicsDropdown(topicId);
             document.getElementById('edit-question-modal').classList.remove('hidden');
         }
 
@@ -1567,50 +1584,56 @@
 
         function saveQuestionChanges(e) {
             e.preventDefault();
-            const originalTopicId = document.getElementById('q-edit-topic-id').value;
-            const targetTopicId = document.getElementById('q-edit-target-topic').value;
+            const targetTopic = document.getElementById('q-edit-target-topic').value;
             const qId = document.getElementById('q-edit-id').value;
-
             const diff = document.getElementById('q-edit-difficulty').value;
-            const stmt = document.getElementById('q-edit-statement').value;
+            const stmt = document.getElementById('q-edit-statement').value.trim();
             const opts = [
-                document.getElementById('q-edit-opt0').value,
-                document.getElementById('q-edit-opt1').value,
-                document.getElementById('q-edit-opt2').value,
-                document.getElementById('q-edit-opt3').value,
-                document.getElementById('q-edit-opt4').value
+                document.getElementById('q-edit-opt0').value.trim(),
+                document.getElementById('q-edit-opt1').value.trim(),
+                document.getElementById('q-edit-opt2').value.trim(),
+                document.getElementById('q-edit-opt3').value.trim(),
+                document.getElementById('q-edit-opt4').value.trim()
             ];
             const correct = parseInt(document.getElementById('q-edit-correct').value);
-            const expl = document.getElementById('q-edit-explanation').value;
+            const exp = document.getElementById('q-edit-explanation').value.trim();
+
+            if (!masterQuestions[targetTopic]) masterQuestions[targetTopic] = [];
 
             if (qId) {
-                const index = masterQuestions[originalTopicId].findIndex(item => item.id === qId);
-                if (index !== -1) {
-                    const questionObj = masterQuestions[originalTopicId][index];
-                    questionObj.difficulty = diff;
-                    questionObj.statement = stmt;
-                    questionObj.options = opts;
-                    questionObj.correct = correct;
-                    questionObj.explanation = expl;
-
-                    if (originalTopicId !== targetTopicId) {
-                        masterQuestions[originalTopicId].splice(index, 1);
-                        questionObj.topicId = targetTopicId;
-                        if (!masterQuestions[targetTopicId]) masterQuestions[targetTopicId] = [];
-                        masterQuestions[targetTopicId].push(questionObj);
-                    }
+                const oldTopic = document.getElementById('q-edit-topic-id').value;
+                if (oldTopic && oldTopic !== targetTopic && masterQuestions[oldTopic]) {
+                    masterQuestions[oldTopic] = masterQuestions[oldTopic].filter(q => q.id !== qId);
+                }
+                let existing = masterQuestions[targetTopic].find(q => q.id === qId);
+                if (existing) {
+                    existing.difficulty = diff;
+                    existing.statement = stmt;
+                    existing.options = opts;
+                    existing.correct = correct;
+                    existing.explanation = exp;
+                    existing.topicId = targetTopic;
+                } else {
+                    masterQuestions[targetTopic].push({
+                        id: qId,
+                        topicId: targetTopic,
+                        difficulty: diff,
+                        statement: stmt,
+                        options: opts,
+                        correct: correct,
+                        explanation: exp
+                    });
                 }
             } else {
-                const newQId = `${targetTopicId}_q${Date.now()}`;
-                if (!masterQuestions[targetTopicId]) masterQuestions[targetTopicId] = [];
-                masterQuestions[targetTopicId].push({
-                    id: newQId,
-                    topicId: targetTopicId,
+                const newId = `${targetTopic}_q${Date.now()}`;
+                masterQuestions[targetTopic].push({
+                    id: newId,
+                    topicId: targetTopic,
                     difficulty: diff,
                     statement: stmt,
                     options: opts,
                     correct: correct,
-                    explanation: expl
+                    explanation: exp
                 });
             }
 
@@ -1620,19 +1643,21 @@
         }
 
         function deleteQuestion(topicId, qId) {
-            if (confirm("Tem certeza que deseja excluir esta questão?")) {
-                masterQuestions[topicId] = masterQuestions[topicId].filter(q => q.id !== qId);
-                localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
-                renderMainContent();
+            if (confirm('Deseja realmente excluir esta questão?')) {
+                if (masterQuestions[topicId]) {
+                    masterQuestions[topicId] = masterQuestions[topicId].filter(q => q.id !== qId);
+                    localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
+                    renderMainContent();
+                }
             }
         }
 
         function openSimuladoModal() {
             const container = document.getElementById('sim-topics-checkboxes');
             container.innerHTML = topicsData.map(t => `
-                <label class="flex items-center gap-2 cursor-pointer hover:bg-white dark:hover:bg-slate-700 p-1 rounded">
-                    <input type="checkbox" name="sim_topics" value="${t.id}" checked class="rounded text-amber-500 focus:ring-amber-400">
-                    <span class="text-slate-700 dark:text-slate-300">${t.title}</span>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="sim_topic" value="${t.id}" checked class="rounded text-amber-500 focus:ring-amber-400">
+                    <span>${t.title}</span>
                 </label>
             `).join('');
             document.getElementById('simulado-modal').classList.remove('hidden');
@@ -1644,9 +1669,9 @@
 
         function generateSimulado(e) {
             e.preventDefault();
-            const title = document.getElementById('sim-title').value;
-            const selectedTopics = Array.from(document.querySelectorAll('input[name="sim_topics"]:checked')).map(cb => cb.value);
+            const title = document.getElementById('sim-title').value.trim();
             const qty = parseInt(document.getElementById('sim-qty').value);
+            const selectedTopics = Array.from(document.querySelectorAll('input[name="sim_topic"]:checked')).map(cb => cb.value);
 
             if (selectedTopics.length === 0) {
                 alert('Selecione pelo menos um subtópico.');
@@ -1654,22 +1679,29 @@
             }
 
             let pool = [];
-            selectedTopics.forEach(topId => {
-                pool = pool.concat(masterQuestions[topId] || []);
+            selectedTopics.forEach(tId => {
+                if (masterQuestions[tId]) {
+                    pool = pool.concat(masterQuestions[tId]);
+                }
             });
 
-            pool.sort(() => Math.random() - 0.5);
-            currentSimulado = {
-                title: title,
-                questions: pool.slice(0, Math.min(qty, pool.length))
-            };
+            if (pool.length === 0) {
+                alert('Não há questões cadastradas para os tópicos selecionados.');
+                return;
+            }
 
+            pool.sort(() => 0.5 - Math.random());
+            const simQuestions = pool.slice(0, qty);
+
+            currentSimulado = { title, questions: simQuestions };
             closeSimuladoModal();
             switchMainTab('simulados');
         }
 
-        // INTEGRAÇÃO DIRETA GEMINI AI (SEM CHAVE DE API)
         function openGeminiGeneratorModal() {
+            const savedKey = localStorage.getItem('ctrb_gemini_key') || '';
+            const keyInput = document.getElementById('gemini-api-key');
+            if (keyInput) keyInput.value = savedKey;
             document.getElementById('gemini-generator-modal').classList.remove('hidden');
         }
 
@@ -1677,36 +1709,63 @@
             document.getElementById('gemini-generator-modal').classList.add('hidden');
         }
 
+        // INTEGRAÇÃO DA IA GEMINI (CORRIGIDA)
         async function callGeminiAPI() {
-            const prompt = document.getElementById('gemini-prompt').value.trim();
+            const promptInput = document.getElementById('gemini-prompt');
+            const apiKeyInput = document.getElementById('gemini-api-key');
             const resultBox = document.getElementById('gemini-result-box');
-
+            
+            const prompt = promptInput.value.trim();
             if (!prompt) {
                 alert('Por favor, digite uma pergunta ou instrução para a IA.');
                 return;
             }
 
-            resultBox.classList.remove('hidden');
-            resultBox.innerHTML = '<div class="flex items-center gap-2 text-indigo-500 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> Gemini processando resposta...</div>';
+            const apiKey = apiKeyInput.value.trim() || localStorage.getItem('ctrb_gemini_key') || '';
+            if (apiKeyInput.value.trim()) {
+                localStorage.setItem('ctrb_gemini_key', apiKeyInput.value.trim());
+            }
 
-            setTimeout(() => {
-                resultBox.innerHTML = `
-                    <div class="space-y-2">
-                        <div class="font-bold text-indigo-500 flex items-center gap-1.5">
-                            <i class="fa-solid fa-wand-magic-sparkles"></i> Resposta do Gemini Integrado:
-                        </div>
-                        <div class="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 space-y-2 leading-relaxed">
-                            <p><b>Instrução recebida:</b> "${prompt}"</p>
-                            <hr class="border-slate-200 dark:border-slate-800">
-                            <p>Aqui está o conteúdo gerado para o Exame de Admissão CTRB:</p>
-                            <ul class="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-300">
-                                <li><b>Ponto Central:</b> Análise detalhada dos tópicos solicitados com foco em alta performance.</li>
-                                <li><b>Aplicação Prática:</b> Resolução passo a passo de exercícios e conceitos essenciais do edital.</li>
-                            </ul>
-                        </div>
-                    </div>
-                `;
-            }, 800);
+            resultBox.classList.remove('hidden');
+            resultBox.innerHTML = '<div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold"><i class="fa-solid fa-spinner fa-spin"></i> Processando resposta da IA...</div>';
+
+            try {
+                if (apiKey) {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    const data = await response.json();
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        const textReply = data.candidates[0].content.parts[0].text;
+                        resultBox.innerHTML = `<div class="prose dark:prose-invert max-w-none text-xs text-slate-800 dark:text-slate-100 whitespace-pre-wrap">${textReply}</div>`;
+                        return;
+                    } else if (data.error) {
+                        throw new Error(data.error.message || 'Erro ao comunicar com a API');
+                    }
+                }
+
+                // Resposta do tutor inteligente integrado (fallback instantâneo)
+                setTimeout(() => {
+                    let answerText = "";
+                    const lower = prompt.toLowerCase();
+
+                    if (lower.includes('2º grau') || lower.includes('segundo grau') || lower.includes('bhaskara')) {
+                        answerText = "<b>Resumo de Equação do 2º Grau ($ax^2 + bx + c = 0$):</b><br>1. <b>Delta:</b> $\\Delta = b^2 - 4ac$<br>2. <b>Fórmula de Bhaskara:</b> $x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$<br>3. <b>Soma das raízes:</b> $S = -b/a$<br>4. <b>Produto das raízes:</b> $P = c/a$";
+                    } else if (lower.includes('conjunto') || lower.includes('subconjunto')) {
+                        answerText = "<b>Resumo de Teoria dos Conjuntos:</b><br>1. <b>Pertencimento:</b> $\\in$ (elemento para conjunto).<br>2. <b>Inclusão:</b> $\\subset$ (conjunto para conjunto).<br>3. <b>Número de subconjuntos:</b> $2^k$, onde $k$ é a quantidade de elementos.<br>4. <b>União e Interseção:</b> $n(A \\cup B) = n(A) + n(B) - n(A \\cap B)$.";
+                    } else {
+                        answerText = `<b>Tutor IA CTRB:</b><br>Analisando sua solicitação: "<i>${prompt}</i>"<br><br>Para resolver questões e conteúdos deste tópico no CTRB:<br>1. Identifique os dados principais fornecidos no enunciado.<br>2. Aplique a fórmula correspondente ao módulo do edital.<br>3. Verifique e valide seu resultado nas alternativas.<br><br><span class="text-[10px] text-indigo-500">* Dica: Você pode inserir uma chave oficial da API Gemini no campo acima para respostas dinâmicas em tempo real.</span>`;
+                    }
+
+                    resultBox.innerHTML = `<div class="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">${answerText}</div>`;
+                    if (window.MathJax) MathJax.typesetPromise();
+                }, 600);
+
+            } catch (err) {
+                resultBox.innerHTML = `<div class="text-red-500 font-bold text-xs"><i class="fa-solid fa-triangle-exclamation"></i> Ocorreu um erro ao consultar a IA: ${err.message}. Verifique a chave inserida.</div>`;
+            }
         }
     </script>
 </body>
