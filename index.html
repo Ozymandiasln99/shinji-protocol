@@ -206,7 +206,7 @@
             <form id="form-admin" onsubmit="handleAdminLogin(event)" class="space-y-4 hidden">
                 <div class="text-center mb-2">
                     <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Entrar na Plataforma</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Use <strong>admin / admin</strong> para acessar como Professor.</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Insira suas credenciais cadastradas para ter acesso.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Usuário / E-mail</label>
@@ -397,11 +397,8 @@
     <script>
         let currentUser = JSON.parse(localStorage.getItem('ctrb_user')) || { role: 'aluno', name: 'Aluno' };
         
-        let registeredStudents = JSON.parse(localStorage.getItem('ctrb_students_db')) || [
-            { name: 'Lucas Silva', email: 'lucas@aluno.com', pass: '12345', role: 'aluno' },
-            { name: 'Mariana Souza', email: 'mariana@aluno.com', pass: '12345', role: 'aluno' },
-            { name: 'Gabriel Santos', email: 'gabriel@aluno.com', pass: '12345', role: 'aluno' }
-        ];
+        // CORREÇÃO 1: Inicia a lista de alunos vazia se não houver registros anteriores
+        let registeredStudents = JSON.parse(localStorage.getItem('ctrb_students_db')) || [];
 
         let currentMainTab = 'edital'; 
         let currentSubTopicId = '2.1';
@@ -514,7 +511,6 @@
             renderSidebarNav();
             initQuillEditor();
             
-            // Segurança: Se for aluno e tentar acessar aba de professor, redireciona para edital
             if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
                 currentMainTab = 'edital';
             }
@@ -706,13 +702,12 @@
                     closeAuthModal();
                     renderMainContent();
                 } else {
-                    alert('Credenciais inválidas. Use admin / admin para Professor.');
+                    alert('Credenciais inválidas. Verifique seu usuário e senha.');
                 }
             }
         }
 
         function switchMainTab(tab) {
-            // Proteção estrita: Aluno não pode entrar na aba professor
             if (tab === 'professor' && currentUser.role !== 'admin') {
                 alert('Acesso restrito a professores.');
                 return;
@@ -758,7 +753,6 @@
         }
 
         function renderMainContent() {
-            // Nova validação de segurança caso o usuário mude o estado externamente
             if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
                 currentMainTab = 'edital';
             }
@@ -905,6 +899,7 @@
             if (window.MathJax) MathJax.typesetPromise();
         }
 
+        // CORREÇÃO 3: Renderização aprimorada do Painel de Desempenho com estilo profissional e visão de todos os alunos se for professor
         function renderPerformanceView(main) {
             let totalAcertos = 0;
             let totalErros = 0;
@@ -921,14 +916,19 @@
 
             const totalRespondidas = totalAcertos + totalErros;
             const aproveitamentoGeral = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
-            let melhorTópico = topicPerformances.reduce((prev, current) => (prev.aproveitamento > current.aproveitamento) ? prev : current, topicPerformances[0]);
+            let melhorTopico = topicPerformances.reduce((prev, current) => (prev.aproveitamento > current.aproveitamento) ? prev : current, topicPerformances[0]);
+
+            const isProf = currentUser.role === 'admin';
+            const studentsList = Object.keys(multiStudentPerf);
 
             main.innerHTML = `
                 <div class="space-y-6 flex flex-col h-full">
                     <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
                         <div>
-                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Métricas Estilo Qconcursos</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Dashboard de Desempenho e Aferição de Modelo</h2>
+                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Análise de Rendimento</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">
+                                ${isProf ? 'Dashboard Global de Desempenho da Turma' : 'Seu Painel Didático de Evolução'}
+                            </h2>
                         </div>
                         <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
                             <div class="text-right">
@@ -950,8 +950,8 @@
                             </div>
                             <div>
                                 <div class="text-[11px] font-bold uppercase text-amber-600 dark:text-amber-400">Aferição do Melhor Modelo de Aprendizagem</div>
-                                <div class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5">Módulo de Maior Destaque: <u>${melhorTópico ? melhorTópico.title : 'N/A'}</u></div>
-                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Taxa de assertividade de ${melhorTópico ? melhorTópico.aproveitamento : 0}% neste modelo analítico.</div>
+                                <div class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5">Módulo de Maior Destaque: <u>${melhorTopico ? melhorTopico.title : 'N/A'}</u></div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Taxa de assertividade de ${melhorTopico ? melhorTopico.aproveitamento : 0}% neste modelo analítico.</div>
                             </div>
                         </div>
                         <div class="hidden sm:block text-right">
@@ -959,6 +959,7 @@
                         </div>
                     </div>
 
+                    <!-- GRÁFICOS VISUAIS -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
                             <h3 class="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
@@ -979,44 +980,55 @@
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm mt-4">
-                        <table class="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                                    <th class="p-3.5 font-bold uppercase tracking-wider">Módulo / Subtópico</th>
-                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Acertos</th>
-                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Erros</th>
-                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Total</th>
-                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Aproveitamento</th>
-                                    <th class="p-3.5 font-bold uppercase tracking-wider text-right">Ações Rápidas</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                                ${topicsData.map(t => {
-                                    const stats = studentPerformanceData[t.id] || { acertos: 0, erros: 0 };
-                                    const tot = stats.acertos + stats.erros;
-                                    const apr = tot > 0 ? Math.round((stats.acertos / tot) * 100) : 0;
-                                    return `
-                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                                            <td class="p-3.5 font-medium text-slate-800 dark:text-slate-200">${t.title}</td>
-                                            <td class="p-3.5 text-center font-bold text-emerald-600 dark:text-emerald-400">${stats.acertos}</td>
-                                            <td class="p-3.5 text-center font-bold text-red-500">${stats.erros}</td>
-                                            <td class="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">${tot}</td>
-                                            <td class="p-3.5 text-center">
-                                                <span class="px-2 py-1 rounded-lg font-black text-[11px] ${apr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : apr >= 40 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}">
-                                                    ${apr}%
-                                                </span>
-                                            </td>
-                                            <td class="p-3.5 text-right space-x-1">
-                                                <button onclick="adjustPerformance('${t.id}', 'acerto', 1)" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold shadow transition">+ Acerto</button>
-                                                <button onclick="adjustPerformance('${t.id}', 'erro', 1)" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">+ Erro</button>
-                                                <button onclick="resetTopicPerformance('${t.id}')" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition"><i class="fa-solid fa-rotate-right"></i></button>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
+                    <!-- TABELA DE RESULTADOS POR MÓDULO -->
+                    <div class="space-y-2 mt-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-amber-500"></i> Detalhamento por Módulo
+                        </h3>
+                        <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                        <th class="p-3.5 font-bold uppercase tracking-wider">Módulo / Subtópico</th>
+                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Acertos</th>
+                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Erros</th>
+                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Total</th>
+                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Aproveitamento</th>
+                                        <th class="p-3.5 font-bold uppercase tracking-wider text-right">Ações Rápidas</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                    ${topicsData.map(t => {
+                                        const stats = studentPerformanceData[t.id] || { acertos: 0, erros: 0 };
+                                        const tot = stats.acertos + stats.erros;
+                                        const apr = tot > 0 ? Math.round((stats.acertos / tot) * 100) : 0;
+                                        return `
+                                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                                <td class="p-3.5 font-medium text-slate-800 dark:text-slate-200">${t.title}</td>
+                                                <td class="p-3.5 text-center font-bold text-emerald-600 dark:text-emerald-400">${stats.acertos}</td>
+                                                <td class="p-3.5 text-center font-bold text-red-500">${stats.erros}</td>
+                                                <td class="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">${tot}</td>
+                                                <td class="p-3.5 text-center">
+                                                    <div class="flex items-center justify-center gap-2">
+                                                        <div class="w-16 bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden hidden sm:block">
+                                                            <div class="bg-amber-500 h-full" style="width: ${apr}%"></div>
+                                                        </div>
+                                                        <span class="px-2 py-0.5 rounded-lg font-black text-[11px] ${apr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : apr >= 40 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}">
+                                                            ${apr}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td class="p-3.5 text-right space-x-1">
+                                                    <button onclick="adjustPerformance('${t.id}', 'acerto', 1)" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold shadow transition">+ Acerto</button>
+                                                    <button onclick="adjustPerformance('${t.id}', 'erro', 1)" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">+ Erro</button>
+                                                    <button onclick="resetTopicPerformance('${t.id}')" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition" title="Zerar"><i class="fa-solid fa-rotate-right"></i></button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1103,73 +1115,82 @@
                             <i class="fa-solid fa-users text-amber-500"></i> Relatório Individual de Desempenho por Aluno
                         </h3>
 
-                        <div class="grid grid-cols-1 gap-4">
-                            ${studentsList.map(studentName => {
-                                const studData = multiStudentPerf[studentName] || {};
-                                let totAc = 0, totEr = 0;
-                                Object.values(studData).forEach(st => {
-                                    totAc += (st.acertos || 0);
-                                    totEr += (st.erros || 0);
-                                });
-                                const totalQ = totAc + totEr;
-                                const mediaApr = totalQ > 0 ? Math.round((totAc / totalQ) * 100) : 0;
+                        ${studentsList.length === 0 ? `
+                            <div class="text-center py-12 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl space-y-3">
+                                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-950/60 text-amber-500 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
+                                    <i class="fa-solid fa-user-slash"></i>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">Nenhum Aluno Cadastrado Ainda</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">Assim que os alunos realizarem o cadastro na plataforma, seus desempenhos individuais aparecerão listados aqui.</p>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 gap-4">
+                                ${studentsList.map(studentName => {
+                                    const studData = multiStudentPerf[studentName] || {};
+                                    let totAc = 0, totEr = 0;
+                                    Object.values(studData).forEach(st => {
+                                        totAc += (st.acertos || 0);
+                                        totEr += (st.erros || 0);
+                                    });
+                                    const totalQ = totAc + totEr;
+                                    const mediaApr = totalQ > 0 ? Math.round((totAc / totalQ) * 100) : 0;
 
-                                return `
-                                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                            <div class="flex items-center gap-4">
-                                                <div class="bg-slate-100 dark:bg-slate-800 text-amber-500 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border border-slate-200 dark:border-slate-700 shadow">
-                                                    <i class="fa-solid fa-user-graduate"></i>
-                                                </div>
-                                                <div>
-                                                    <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${studentName}</h4>
-                                                    <p class="text-xs text-slate-500 dark:text-slate-400">Status: Aluno Cadastrado • Total de Questões Resolvidas: ${totalQ}</p>
-                                                </div>
-                                            </div>
-
-                                            <div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
-                                                <div class="text-center">
-                                                    <div class="text-[10px] uppercase font-bold text-slate-400">Acertos</div>
-                                                    <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">${totAc}</div>
-                                                </div>
-                                                <div class="text-center">
-                                                    <div class="text-[10px] uppercase font-bold text-slate-400">Erros</div>
-                                                    <div class="text-sm font-black text-red-500">${totEr}</div>
-                                                </div>
-                                                <div class="text-center">
-                                                    <div class="text-[10px] uppercase font-bold text-slate-400">Aproveitamento</div>
-                                                    <span class="px-2.5 py-1 rounded-lg font-black text-xs ${mediaApr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}">
-                                                        ${mediaApr}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                            ${topicsData.map(t => {
-                                                const tStats = studData[t.id] || { acertos: 0, erros: 0 };
-                                                const tTot = tStats.acertos + tStats.erros;
-                                                const tApr = tTot > 0 ? Math.round((tStats.acertos / tTot) * 100) : 0;
-                                                return `
-                                                    <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-center">
-                                                        <div class="text-[10px] font-bold text-slate-400 truncate">${t.title}</div>
-                                                        <div class="text-xs font-black text-amber-500 mt-1">${tApr}%</div>
-                                                        <div class="text-[9px] text-slate-500 mt-0.5">${tStats.acertos}A / ${tStats.erros}E</div>
+                                    return `
+                                        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                <div class="flex items-center gap-4">
+                                                    <div class="bg-slate-100 dark:bg-slate-800 text-amber-500 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border border-slate-200 dark:border-slate-700 shadow">
+                                                        <i class="fa-solid fa-user-graduate"></i>
                                                     </div>
-                                                `;
-                                            }).join('')}
+                                                    <div>
+                                                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${studentName}</h4>
+                                                        <p class="text-xs text-slate-500 dark:text-slate-400">Status: Aluno Cadastrado • Total de Questões Resolvidas: ${totalQ}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
+                                                    <div class="text-center">
+                                                        <div class="text-[10px] uppercase font-bold text-slate-400">Acertos</div>
+                                                        <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">${totAc}</div>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <div class="text-[10px] uppercase font-bold text-slate-400">Erros</div>
+                                                        <div class="text-sm font-black text-red-500">${totEr}</div>
+                                                    </div>
+                                                    <div class="text-center">
+                                                        <div class="text-[10px] uppercase font-bold text-slate-400">Aproveitamento</div>
+                                                        <span class="px-2.5 py-1 rounded-lg font-black text-xs ${mediaApr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}">
+                                                            ${mediaApr}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                ${topicsData.map(t => {
+                                                    const tStats = studData[t.id] || { acertos: 0, erros: 0 };
+                                                    const tTot = tStats.acertos + tStats.erros;
+                                                    const tApr = tTot > 0 ? Math.round((tStats.acertos / tTot) * 100) : 0;
+                                                    return `
+                                                        <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-center">
+                                                            <div class="text-[10px] font-bold text-slate-400 truncate">${t.title}</div>
+                                                            <div class="text-xs font-black text-amber-500 mt-1">${tApr}%</div>
+                                                            <div class="text-[9px] text-slate-500 mt-0.5">${tStats.acertos}A / ${tStats.erros}E</div>
+                                                        </div>
+                                                    `;
+                                                }).join('')}
+                                            </div>
                                         </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
                     </div>
                 </div>
             `;
         }
 
         function adjustPerformance(topicId, type, qty) {
-            // CORREÇÃO: Professor logado testando o sistema não altera as métricas estatísticas dos alunos
             if (currentUser.role === 'admin') {
                 return;
             }
@@ -1224,8 +1245,6 @@
             }
 
             const val = parseInt(selected.value);
-            
-            // CORREÇÃO: Removemos classes ocultas anteriores garantindo que o container reapareça com estilo visível
             feedbackDiv.className = 'text-xs p-4 rounded-xl border mt-2 block';
 
             let foundQ = null;
