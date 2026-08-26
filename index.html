@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTRB Prep Pro | Plataforma de Alta Performance em Matemática</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fffbe6',
+                            100: '#fff1b8',
+                            500: '#eab308',
+                            600: '#ca8a04',
+                            700: '#a16207',
+                            900: '#422006',
+                        },
+                        gran: {
+                            blue: '#0f172a',
+                            navy: '#1e293b',
+                            accent: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js para Gráficos Profissionais -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- MathJax para Renderização de Fórmulas Matemáticas -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Quill Rich Text Editor (Estilo Word) -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <style>
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background: #334155; }
+        .prose h3 { font-size: 1.125rem; font-weight: 700; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .prose h4 { font-size: 0.95rem; font-weight: 700; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+        .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .prose ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 1rem; }
+        /* Ajustes do Editor Quill para Dark Mode */
+        .ql-toolbar { background-color: #f8fafc; border-radius: 0.5rem 0.5rem 0 0; }
+        .dark .ql-toolbar { background-color: #1e293b; border-color: #334155; }
+        .dark .ql-stroke { stroke: #cbd5e1 !important; }
+        .dark .ql-fill { fill: #cbd5e1 !important; }
+        .dark .ql-picker { color: #cbd5e1 !important; }
+        .ql-container { border-radius: 0 0 0.5rem 0.5rem; background-color: #ffffff; }
+        .dark .ql-container { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- TOP BAR -->
+    <header class="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            
+            <!-- LOGO & TITULO -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchMainTab('edital')">
+                <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-black text-xl flex items-center justify-center w-10 h-10 shadow">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide flex items-center gap-2">
+                        CTRB PREP <span class="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded border border-amber-500/30">PRO</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400">Curso Preparatório de Matemática • Exame de Admissão CTRB</p>
+                </div>
+            </div>
+
+            <!-- NAVEGAÇÃO EM ABAS -->
+            <nav class="flex items-center gap-1 bg-slate-800/70 p-1 rounded-xl border border-slate-700/60 overflow-x-auto max-w-full">
+                <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-amber-500 text-slate-950 shadow">
+                    <i class="fa-solid fa-file-contract"></i> Edital CTRB
+                </button>
+                <button id="tab-nav-teoria" onclick="switchMainTab('teoria')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-book-open"></i> Materiais Teóricos
+                </button>
+                <button id="tab-nav-questoes" onclick="switchMainTab('questoes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-list-check"></i> Banco de Questões
+                </button>
+                <button id="tab-nav-simulados" onclick="switchMainTab('simulados')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-square-poll-vertical"></i> Simulados
+                </button>
+                <button id="tab-nav-desempenho" onclick="switchMainTab('desempenho')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-chart-line"></i> Desempenho
+                </button>
+                <!-- ABA EXCLUSIVA DO PROFESSOR -->
+                <button id="tab-nav-professor" onclick="switchMainTab('professor')" class="hidden px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-amber-400 hover:text-white hover:bg-slate-700/50 border border-amber-500/30">
+                    <i class="fa-solid fa-chalkboard-user"></i> Painel do Professor
+                </button>
+            </nav>
+            
+            <!-- CONTROLES DA DIREITA -->
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-amber-400 rounded-lg bg-slate-800 hover:bg-slate-700 transition" title="Alternar Tema Dark/Light">
+                    <i id="theme-icon" class="fa-solid fa-moon text-lg"></i>
+                </button>
+
+                <div id="user-badge" class="hidden sm:flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 text-xs">
+                    <i class="fa-solid fa-user-circle text-amber-400 text-sm" id="user-icon"></i>
+                    <span id="user-name-label" class="font-medium text-slate-200">Aluno</span>
+                    <span id="user-role-badge" class="bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">ALUNO</span>
+                    <button onclick="openConfigCredentialsModal()" class="ml-1 text-slate-400 hover:text-amber-400 transition" title="Alterar Login/Senha">
+                        <i class="fa-solid fa-gear"></i>
+                    </button>
+                </div>
+
+                <button id="auth-btn" onclick="openAuthModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-1.5 rounded-lg font-bold text-xs transition shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> Entrar / Cadastrar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-6">
+        
+        <!-- SIDEBAR COM SUBTÓPICOS -->
+        <aside class="w-full md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 flex flex-col h-auto md:h-[calc(100vh-120px)] md:sticky md:top-24 transition-colors">
+            
+            <div class="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h2 class="font-bold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-amber-500"></i> Subtópicos do Edital
+                </h2>
+                <span class="text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold" id="topic-count">11 Módulos</span>
+            </div>
+
+            <!-- MENU ITEMS -->
+            <nav class="flex-1 overflow-y-auto custom-scroll space-y-1 pr-1" id="sidebar-nav">
+                <!-- Navigation rendered via JS -->
+            </nav>
+
+            <!-- PAINEL PROFESSOR / MODERAÇÃO -->
+            <div id="admin-sidebar-tools" class="hidden mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 bg-amber-500/10 p-3 rounded-xl border border-amber-500/30">
+                <h3 class="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span><i class="fa-solid fa-shield-halved"></i> Moderação</span>
+                    <span class="text-[9px] bg-amber-500 text-slate-950 px-1 rounded font-black">PROFESSOR</span>
+                </h3>
+                <div class="space-y-1.5">
+                    <button onclick="openAddQuestionModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-2 border border-amber-500/30">
+                        <i class="fa-solid fa-plus-circle"></i> Adicionar Nova Questão
+                    </button>
+                    <button onclick="openSimuladoModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pen"></i> Criar Novo Simulado
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="flex-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 flex flex-col min-h-[550px] transition-colors" id="main-content">
+            <!-- Dynamic Content Injected Here -->
+        </main>
+    </div>
+
+    <!-- MODAL DE AUTENTICAÇÃO E CADASTRO DO ALUNO E PROFESSOR -->
+    <div id="auth-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            
+            <!-- TABS DE AUTH -->
+            <div class="flex border-b border-slate-200 dark:border-slate-800 mb-4">
+                <button id="auth-tab-cadastral" onclick="switchAuthTab('cadastral')" class="flex-1 py-2 text-xs font-bold border-b-2 border-amber-500 text-amber-500">
+                    <i class="fa-solid fa-user-plus mr-1"></i> Cadastro de Aluno
+                </button>
+                <button id="auth-tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-xs font-bold text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-right-to-bracket mr-1"></i> Login Aluno/Prof.
+                </button>
+            </div>
+
+            <!-- FORM 1: CADASTRO DO ALUNO -->
+            <form id="form-cadastral" onsubmit="handleStudentRegister(event)" class="space-y-4">
+                <div class="text-center mb-2">
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Criar Conta de Aluno</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Cadastre-se para registrar seu progresso nos simulados.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Nome Completo</label>
+                    <input type="text" id="reg-student-name" required autocomplete="off" placeholder="Ex: Lucas Silva" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">E-mail / Login</label>
+                    <input type="text" id="reg-student-email" required autocomplete="off" placeholder="seuemail@exemplo.com" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Senha</label>
+                    <input type="password" id="reg-student-pass" required autocomplete="off" placeholder="Crie uma senha" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-sm transition shadow">
+                    Concluir Cadastro
+                </button>
+            </form>
+
+            <!-- FORM 2: LOGIN (ALUNO / PROFESSOR) -->
+            <form id="form-admin" onsubmit="handleAdminLogin(event)" class="space-y-4 hidden">
+                <div class="text-center mb-2">
+                    <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Entrar na Plataforma</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Use <strong>admin / admin</strong> para acessar como Professor.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Usuário / E-mail</label>
+                    <input type="text" id="admin-user" required autocomplete="off" placeholder="Digite seu usuário ou e-mail" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Senha</label>
+                    <input type="password" id="admin-pass" required autocomplete="off" placeholder="Digite sua senha" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-amber-400 font-bold py-2.5 rounded-lg text-sm transition shadow border border-amber-500/30">
+                    Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL ALTERAR LOGIN / SENHA -->
+    <div id="config-credentials-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeConfigCredentialsModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-key text-amber-500"></i> Alterar Credenciais de Acesso
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Atualize seu nome de usuário/login ou defina uma nova senha.</p>
+
+            <form onsubmit="saveNewCredentials(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Seu Nome / Login Atual</label>
+                    <input type="text" id="cfg-username" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Nova Senha</label>
+                    <input type="password" id="cfg-password" required placeholder="Digite a nova senha" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeConfigCredentialsModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs shadow">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR TÓPICO / VÍDEO COM EDITOR WORD (QUILL) -->
+    <div id="edit-topic-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-3xl w-full p-6 border border-slate-200 dark:border-slate-800 relative max-h-[90vh] flex flex-col">
+            <button onclick="closeEditTopicModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-amber-500"></i> Editar Módulo Teórico & Videoaula
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Use os botões de formatação (estilo Word) para alterar o texto ou adicionar vídeos.</p>
+
+            <form id="edit-topic-form" onsubmit="saveTopicChanges(event)" class="space-y-4 flex-1 overflow-y-auto custom-scroll pr-2">
+                <input type="hidden" id="edit-topic-id">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Título do Subtópico</label>
+                    <input type="text" id="edit-topic-title" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">ID do Vídeo do YouTube (Ex: fA-5rX3rV44)</label>
+                    <input type="text" id="edit-topic-yt" placeholder="Código do vídeo após v=" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Material Teórico (Editor Visual Estilo Word)</label>
+                    <div id="quill-editor-topic" class="min-h-[220px]"></div>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeEditTopicModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition shadow">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR / ADICIONAR QUESTÃO -->
+    <div id="edit-question-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 relative max-h-[90vh] flex flex-col">
+            <button onclick="closeEditQuestionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2" id="modal-question-title">
+                <i class="fa-solid fa-file-pen text-amber-500"></i> Editar Questão
+            </h3>
+
+            <form id="edit-question-form" onsubmit="saveQuestionChanges(event)" class="space-y-4 flex-1 overflow-y-auto custom-scroll pr-2 mt-3">
+                <input type="hidden" id="q-edit-topic-id">
+                <input type="hidden" id="q-edit-id">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Subtópico Pertencente</label>
+                    <select id="q-edit-target-topic" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none"></select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Dificuldade</label>
+                    <select id="q-edit-difficulty" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="Fácil">Fácil</option>
+                        <option value="Média">Média</option>
+                        <option value="Difícil">Difícil</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Enunciado</label>
+                    <textarea id="q-edit-statement" required rows="3" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Alternativas</label>
+                    <input type="text" id="q-edit-opt0" placeholder="Opção A" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                    <input type="text" id="q-edit-opt1" placeholder="Opção B" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                    <input type="text" id="q-edit-opt2" placeholder="Opção C" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                    <input type="text" id="q-edit-opt3" placeholder="Opção D" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                    <input type="text" id="q-edit-opt4" placeholder="Opção E" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Gabarito Correto</label>
+                    <select id="q-edit-correct" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold text-amber-600">
+                        <option value="0">Opção A</option>
+                        <option value="1">Opção B</option>
+                        <option value="2">Opção C</option>
+                        <option value="3">Opção D</option>
+                        <option value="4">Opção E</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Resolução Detalhada</label>
+                    <textarea id="q-edit-explanation" rows="3" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeEditQuestionModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition shadow">Salvar Questão</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL GERADOR DE SIMULADO -->
+    <div id="simulado-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 relative max-h-[90vh] flex flex-col">
+            <button onclick="closeSimuladoModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-amber-500"></i> Criar Simulado Personalizado
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Monte cadernos de prova utilizando as questões cadastradas por subtópico.</p>
+
+            <form id="simulado-form" onsubmit="generateSimulado(event)" class="space-y-4 flex-1 overflow-y-auto custom-scroll pr-2">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Título da Prova</label>
+                    <input type="text" id="sim-title" required placeholder="Ex: Simulado Global CTRB - Matemática 1ª Série" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Subtópicos Abrangidos</label>
+                    <div id="sim-topics-checkboxes" class="space-y-1.5 max-h-36 overflow-y-auto p-2 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Quantidade de Questões</label>
+                    <input type="number" id="sim-qty" min="5" max="100" value="20" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeSimuladoModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition shadow">Gerar Caderno</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT & ENGINE DE DADOS -->
+    <script>
+        let currentUser = JSON.parse(localStorage.getItem('ctrb_user')) || { role: 'aluno', name: 'Aluno' };
+        
+        let registeredStudents = JSON.parse(localStorage.getItem('ctrb_students_db')) || [
+            { name: 'Lucas Silva', email: 'lucas@aluno.com', pass: '12345', role: 'aluno' },
+            { name: 'Mariana Souza', email: 'mariana@aluno.com', pass: '12345', role: 'aluno' },
+            { name: 'Gabriel Santos', email: 'gabriel@aluno.com', pass: '12345', role: 'aluno' }
+        ];
+
+        let currentMainTab = 'edital'; 
+        let currentSubTopicId = '2.1';
+        let currentSimulado = null;
+        let quillTopicEditor = null;
+        let studentPerformanceData = JSON.parse(localStorage.getItem('ctrb_student_perf')) || {};
+        
+        let multiStudentPerf = JSON.parse(localStorage.getItem('ctrb_multi_perf')) || {};
+        
+        registeredStudents.forEach(st => {
+            if (!multiStudentPerf[st.name]) {
+                multiStudentPerf[st.name] = { 
+                    '2.1': {acertos: 0, erros: 0}, '2.2': {acertos: 0, erros: 0}, 
+                    '2.3': {acertos: 0, erros: 0}, '2.4': {acertos: 0, erros: 0}, 
+                    '2.5': {acertos: 0, erros: 0}, '2.6': {acertos: 0, erros: 0}, 
+                    '2.7': {acertos: 0, erros: 0}, '2.8': {acertos: 0, erros: 0}, 
+                    '2.9': {acertos: 0, erros: 0}, '2.10': {acertos: 0, erros: 0}, 
+                    '2.11': {acertos: 0, erros: 0} 
+                };
+            }
+        });
+        localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+
+        const topicsData = JSON.parse(localStorage.getItem('ctrb_topics_data')) || [
+            { 
+                id: '2.1', 
+                title: '2.1 NOÇÕES DE CONJUNTOS', 
+                ytVideoId: 'fA-5rX3rV44',
+                theory: `
+                <h3>1. O que é um Conjunto?</h3>
+                <p>Imagine um conjunto como uma coleção ou grupo de coisas com características parecidas. Na Matemática baseada no livro do autor Gelson Iezzi, chamamos cada item dentro do conjunto de <b>elemento</b>.</p>
+                <p>Para dizer que algo está no conjunto, usamos o símbolo $\\in$ (pertence). Se não está, usamos $\\notin$ (não pertence).</p>
+                
+                <h3>2. Subconjuntos e Relação de Inclusão</h3>
+                <p>Quando um conjunto pequeno $A$ está totalmente contido dentro de um conjunto maior $B$, dizemos que $A$ é subconjunto de $B$ ($A \\subset B$).</p>
+                <p><b>Propriedade importante:</b> O conjunto vazio ($\\emptyset$) faz parte de qualquer conjunto!</p>
+
+                <h3>3. Quantos subconjuntos podemos formar? (Conjunto das Partes)</h3>
+                <p>Se um conjunto possui $k$ elementos, a quantidade total de agrupamentos que podemos formar é:</p>
+                $$n(P(A)) = 2^k$$
+
+                <h3>4. Operações Principais com Conjuntos</h3>
+                <ul>
+                    <li><b>União ($A \\cup B$):</b> Junta os elementos de $A$ com os de $B$.</li>
+                    <li><b>Interseção ($A \\cap B$):</b> É o que eles têm em comum.</li>
+                    <li><b>Diferença ($A - B$):</b> O que tem só em $A$, mas NÃO tem em $B$.</li>
+                </ul>
+
+                <h3>5. Princípio da Inclusão-Exclusão</h3>
+                $$n(A \\cup B) = n(A) + n(B) - n(A \\cap B)$$`
+            },
+            { 
+                id: '2.2', 
+                title: '2.2 CONJUNTOS NUMÉRICOS', 
+                ytVideoId: '80jX7_rR23w',
+                theory: `
+                <h3>1. A Família dos Números</h3>
+                <ul>
+                    <li><b>Naturais ($\\mathbb{N}$):</b> $\{0, 1, 2, 3, \dots\}$.</li>
+                    <li><b>Inteiros ($\\mathbb{Z}$):</b> $\{\dots, -2, -1, 0, 1, 2, \dots\}$.</li>
+                    <li><b>Racionais ($\\mathbb{Q}$):</b> Frações e decimais finitos/periódicos.</li>
+                    <li><b>Irracionais ($\\mathbb{I}$):</b> Decimais infinitos não periódicos (ex: $\\sqrt{2}, \\pi$).</li>
+                    <li><b>Reais ($\\mathbb{R}$):</b> União de Racionais e Irracionais.</li>
+                </ul>`
+            },
+            { id: '2.3', title: '2.3 POLINÔMIOS', ytVideoId: 'k4w4K0a5x8k', theory: '<h3>Teoria de Polinômios e Teorema do Resto</h3><p>Estudo do valor numérico, divisão de polinômios e raízes.</p>' },
+            { id: '2.4', title: '2.4 CÁLCULO ALGÉBRICO', ytVideoId: 'C7W_55Q1y2s', theory: '<h3>Produtos Notáveis e Fatoração</h3><p>Desenvolvimento algébrico avançado e simplificação de frações.</p>' },
+            { id: '2.5', title: '2.5 EQUAÇÕES E INEQUAÇÕES DE 1º GRAU', ytVideoId: '10yMvW_0Q_0', theory: '<h3>Resolução de Equações e Inequações</h3><p>Estudo da reta real e sistemas lineares básicos.</p>' },
+            { id: '2.6', title: '2.6 EQUAÇÕES DE 2º GRAU E OUTRAS', ytVideoId: 'v8JvW0K1_x8', theory: '<h3>Bhaskara e Relações de Girard</h3><p>Soma e produto das raízes de uma equação quadrática.</p>' },
+            { id: '2.7', title: '2.7 FUNÇÕES (1º E 2º GRAU)', ytVideoId: '3f6R6Xb_46E', theory: '<h3>Estudo das Funções Afim e Quadrática</h3><p>Vértice da parábola, máximos e mínimos.</p>' },
+            { id: '2.8', title: '2.8 GEOMETRIA PLANA', ytVideoId: 'X9tQ8v4W8y0', theory: '<h3>Teorema de Pitágoras e Áreas</h3><p>Cálculo de áreas de polígonos e circunferências.</p>' },
+            { id: '2.9', title: '2.9 RAZÕES, PORCENTAGENS E MATEMÁTICA FINANCEIRA', ytVideoId: 'Lw8fA3sX_X4', theory: '<h3>Razão, Proporção e Juros Simples</h3><p>Aplicações comerciais e percentuais.</p>' },
+            { id: '2.10', title: '2.10 NOÇÕES DE ESTATÍSTICA BÁSICA', ytVideoId: 'U_z2dZ3-k_Q', theory: '<h3>Média, Mediana e Moda</h3><p>Análise de tabelas e gráficos estatísticos.</p>' },
+            { id: '2.11', title: '2.11 CONTAGEM E PROBABILIDADE', ytVideoId: '9vW7Q5aF42w', theory: '<h3>Análise Combinatória e Probabilidade</h3><p>Espaço amostral e eventos prováveis.</p>' }
+        ];
+
+        let masterQuestions = JSON.parse(localStorage.getItem('ctrb_questions_data')) || {};
+
+        function generate20QuestionsForTopic(tId, titleName) {
+            const list = [];
+            const diffs = ['Fácil', 'Média', 'Difícil'];
+            for (let i = 1; i <= 20; i++) {
+                const diff = diffs[(i - 1) % 3];
+                list.push({
+                    id: `${tId}_q${i}`,
+                    topicId: tId,
+                    difficulty: diff,
+                    statement: `[Questão ${i}] Questão prática de nível ${diff} para o subtópico ${titleName}. Resolva e assinale a alternativa correta.`,
+                    options: [`Alternativa A (Correta)`, `Alternativa B`, `Alternativa C`, `Alternativa D`, `Alternativa E`],
+                    correct: 0,
+                    explanation: `Resolução detalhada da questão ${i} fundamentada na teoria de Gelson Iezzi.`
+                });
+            }
+            return list;
+        }
+
+        function initDefaultQuestions() {
+            if (Object.keys(masterQuestions).length === 0) {
+                topicsData.forEach(topic => {
+                    masterQuestions[topic.id] = generate20QuestionsForTopic(topic.id, topic.title);
+                });
+                localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDefaultQuestions();
+            applySavedTheme();
+            updateUserUI();
+            renderSidebarNav();
+            initQuillEditor();
+            
+            // Segurança: Se for aluno e tentar acessar aba de professor, redireciona para edital
+            if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
+                currentMainTab = 'edital';
+            }
+            switchMainTab(currentMainTab);
+        });
+
+        function initQuillEditor() {
+            if (!quillTopicEditor && document.getElementById('quill-editor-topic')) {
+                quillTopicEditor = new Quill('#quill-editor-topic', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'align': [] }],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['link', 'video'],
+                            ['clean']
+                        ]
+                    }
+                });
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('ctrb_theme', 'light');
+                document.getElementById('theme-icon').className = 'fa-solid fa-moon text-lg';
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('ctrb_theme', 'dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun text-lg text-amber-400';
+            }
+        }
+
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('ctrb_theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun text-lg text-amber-400';
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-moon text-lg';
+            }
+        }
+
+        function updateUserUI() {
+            const userBadge = document.getElementById('user-badge');
+            const userNameLabel = document.getElementById('user-name-label');
+            const userRoleBadge = document.getElementById('user-role-badge');
+            const authBtn = document.getElementById('auth-btn');
+            const adminTools = document.getElementById('admin-sidebar-tools');
+            const profTab = document.getElementById('tab-nav-professor');
+
+            if (currentUser.role === 'admin') {
+                userBadge.classList.remove('hidden');
+                userNameLabel.textContent = currentUser.name || 'Professor';
+                userRoleBadge.textContent = 'PROFESSOR';
+                userRoleBadge.className = 'bg-amber-500 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-black uppercase';
+                authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sair';
+                adminTools.classList.remove('hidden');
+                profTab.classList.remove('hidden');
+            } else if (currentUser.name && currentUser.name !== 'Aluno') {
+                userBadge.classList.remove('hidden');
+                userNameLabel.textContent = currentUser.name;
+                userRoleBadge.textContent = 'ALUNO';
+                userRoleBadge.className = 'bg-slate-700 text-slate-300 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase';
+                authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sair';
+                adminTools.classList.add('hidden');
+                profTab.classList.add('hidden');
+            } else {
+                userBadge.classList.add('hidden');
+                authBtn.innerHTML = '<i class="fa-solid fa-user-plus"></i> Entrar / Cadastrar';
+                adminTools.classList.add('hidden');
+                profTab.classList.add('hidden');
+            }
+        }
+
+        function switchAuthTab(tab) {
+            const formCad = document.getElementById('form-cadastral');
+            const formLog = document.getElementById('form-admin');
+            const tabCad = document.getElementById('auth-tab-cadastral');
+            const tabLog = document.getElementById('auth-tab-login');
+
+            if (tab === 'cadastral') {
+                formCad.classList.remove('hidden');
+                formLog.classList.add('hidden');
+                tabCad.className = 'flex-1 py-2 text-xs font-bold border-b-2 border-amber-500 text-amber-500';
+                tabLog.className = 'flex-1 py-2 text-xs font-bold text-slate-400 hover:text-slate-200';
+            } else {
+                formCad.classList.add('hidden');
+                formLog.classList.remove('hidden');
+                tabLog.className = 'flex-1 py-2 text-xs font-bold border-b-2 border-amber-500 text-amber-500';
+                tabCad.className = 'flex-1 py-2 text-xs font-bold text-slate-400 hover:text-slate-200';
+            }
+        }
+
+        function openAuthModal() {
+            if (currentUser.name && currentUser.name !== 'Aluno') {
+                currentUser = { role: 'aluno', name: 'Aluno' };
+                localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+                updateUserUI();
+                if (currentMainTab === 'professor') currentMainTab = 'edital';
+                renderMainContent();
+            } else {
+                document.getElementById('auth-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        function openConfigCredentialsModal() {
+            document.getElementById('cfg-username').value = currentUser.name || '';
+            document.getElementById('cfg-password').value = currentUser.pass || '';
+            document.getElementById('config-credentials-modal').classList.remove('hidden');
+        }
+
+        function closeConfigCredentialsModal() {
+            document.getElementById('config-credentials-modal').classList.add('hidden');
+        }
+
+        function saveNewCredentials(e) {
+            e.preventDefault();
+            const newName = document.getElementById('cfg-username').value.trim();
+            const newPass = document.getElementById('cfg-password').value.trim();
+
+            currentUser.name = newName;
+            currentUser.pass = newPass;
+            localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+
+            alert('Credenciais atualizadas com sucesso!');
+            closeConfigCredentialsModal();
+            updateUserUI();
+        }
+
+        function handleStudentRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('reg-student-name').value.trim();
+            const email = document.getElementById('reg-student-email').value.trim();
+            const pass = document.getElementById('reg-student-pass').value.trim();
+
+            if (!registeredStudents.some(s => s.email === email)) {
+                registeredStudents.push({ name, email, pass, role: 'aluno' });
+                localStorage.setItem('ctrb_students_db', JSON.stringify(registeredStudents));
+            }
+
+            if (!multiStudentPerf[name]) {
+                multiStudentPerf[name] = { 
+                    '2.1': {acertos: 0, erros: 0}, '2.2': {acertos: 0, erros: 0}, 
+                    '2.3': {acertos: 0, erros: 0}, '2.4': {acertos: 0, erros: 0}, 
+                    '2.5': {acertos: 0, erros: 0}, '2.6': {acertos: 0, erros: 0}, 
+                    '2.7': {acertos: 0, erros: 0}, '2.8': {acertos: 0, erros: 0}, 
+                    '2.9': {acertos: 0, erros: 0}, '2.10': {acertos: 0, erros: 0}, 
+                    '2.11': {acertos: 0, erros: 0} 
+                };
+                localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+            }
+
+            currentUser = { role: 'aluno', name: name, email: email, pass: pass };
+            localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+
+            alert(`Cadastro realizado com sucesso! Bem-vindo(a), ${name}.`);
+            updateUserUI();
+            closeAuthModal();
+            renderMainContent();
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('admin-user').value.trim();
+            const p = document.getElementById('admin-pass').value.trim();
+
+            if (u === 'admin' && p === 'admin') {
+                currentUser = { role: 'admin', name: 'Professor' };
+                localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+                updateUserUI();
+                closeAuthModal();
+                switchMainTab('professor');
+            } else {
+                const found = registeredStudents.find(s => (s.email === u || s.name === u) && s.pass === p);
+                if (found) {
+                    currentUser = { role: 'aluno', name: found.name, email: found.email, pass: found.pass };
+                    localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+                    updateUserUI();
+                    closeAuthModal();
+                    renderMainContent();
+                } else {
+                    alert('Credenciais inválidas. Use admin / admin para Professor.');
+                }
+            }
+        }
+
+        function switchMainTab(tab) {
+            // Proteção estrita: Aluno não pode entrar na aba professor
+            if (tab === 'professor' && currentUser.role !== 'admin') {
+                alert('Acesso restrito a professores.');
+                return;
+            }
+
+            currentMainTab = tab;
+            
+            const tabs = ['edital', 'teoria', 'questoes', 'simulados', 'desempenho', 'professor'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-nav-${t}`);
+                if (btn) {
+                    if (t === tab) {
+                        btn.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap bg-amber-500 text-slate-950 shadow';
+                    } else {
+                        btn.className = `px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${t === 'professor' ? 'text-amber-400 border border-amber-500/35' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'}`;
+                    }
+                }
+            });
+
+            renderMainContent();
+        }
+
+        function selectSubTopic(subId) {
+            currentSubTopicId = subId;
+            renderSidebarNav();
+            renderMainContent();
+        }
+
+        function renderSidebarNav() {
+            const nav = document.getElementById('sidebar-nav');
+            let html = '';
+
+            topicsData.forEach(t => {
+                const isActive = currentSubTopicId === t.id;
+                html += `
+                    <button onclick="selectSubTopic('${t.id}')" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition ${isActive ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}">
+                        <span class="truncate">${t.title}</span>
+                        <i class="fa-solid fa-chevron-right text-[10px] ${isActive ? 'text-slate-950' : 'text-slate-400'}"></i>
+                    </button>
+                `;
+            });
+            nav.innerHTML = html;
+        }
+
+        function renderMainContent() {
+            // Nova validação de segurança caso o usuário mude o estado externamente
+            if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
+                currentMainTab = 'edital';
+            }
+
+            const main = document.getElementById('main-content');
+            const topic = topicsData.find(t => t.id === currentSubTopicId);
+            const questions = masterQuestions[currentSubTopicId] || [];
+
+            if (currentMainTab === 'edital') {
+                main.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-gran-navy text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">Documento Oficial</span>
+                                <h2 class="text-2xl font-black mt-2">Edital CTRB - Exame de Admissão 2027</h2>
+                                <p class="text-xs text-slate-300 mt-1">Conteúdo Programático de Matemática para o Ensino Médio do Colégio Tenente Rêgo Barros.</p>
+                            </div>
+                            <a href="https://www2.fab.mil.br/ctrb/images/2026/CONCURSO2027/Edital_CTRB_Exame_Admisso_2027.pdf" target="_blank" rel="noopener noreferrer" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs transition shadow flex items-center gap-2 whitespace-nowrap">
+                                <i class="fa-solid fa-file-pdf text-sm"></i> Baixar Edital CTRB (PDF)
+                            </a>
+                        </div>
+
+                        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 space-y-4">
+                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                                <i class="fa-solid fa-list-ol text-amber-500"></i> Módulos e Subtópicos Discriminados no Edital
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${topicsData.map(t => `
+                                    <div onclick="selectSubTopic('${t.id}'); switchMainTab('teoria');" class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl hover:border-amber-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition flex items-center justify-between">
+                                        <div class="space-y-0.5">
+                                            <div class="text-xs font-bold text-slate-800 dark:text-slate-200">${t.title}</div>
+                                            <div class="text-[10px] text-slate-400">Teoria Nível Fundamental • Banco de Exercícios</div>
+                                        </div>
+                                        <i class="fa-solid fa-arrow-right text-xs text-amber-500"></i>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } 
+            else if (currentMainTab === 'teoria') {
+                main.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="flex flex-wrap justify-between items-start gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                            <div>
+                                <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Material Teórico (Base: Gelson Iezzi)</span>
+                                <h2 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">${topic.title}</h2>
+                            </div>
+                            ${currentUser.role === 'admin' ? `
+                                <button onclick="openEditTopicModal('${topic.id}')" class="bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 text-amber-400 text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 border border-amber-500/30">
+                                    <i class="fa-solid fa-pen-to-square"></i> Editar Teoria (Estilo Word)
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                            <div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+                                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+                                    <i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo
+                                </h3>
+                                <div class="prose dark:prose-invert max-w-none text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                                    ${topic.theory}
+                                </div>
+                            </div>
+
+                            <div class="lg:col-span-5 space-y-3 sticky top-24">
+                                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                    <i class="fa-brands fa-youtube text-red-500"></i> Videoaula Explicativa
+                                </h3>
+                                <div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-800 bg-slate-950">
+                                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${topic.ytVideoId}" title="Vídeo do Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            else if (currentMainTab === 'questoes') {
+                main.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
+                            <div>
+                                <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Exercícios</span>
+                                <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">${topic.title}</h2>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-lg">${questions.length} Questões</span>
+                                ${currentUser.role === 'admin' ? `
+                                    <button onclick="openAddQuestionModal('${topic.id}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-1 rounded-lg shadow">
+                                        + Adicionar Questão
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            ${questions.length === 0 ? '<p class="text-xs text-slate-400">Nenhuma questão cadastrada para este subtópico.</p>' : ''}
+                            ${questions.map((q, idx) => `
+                                <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <div class="flex items-center gap-2">
+                                            <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1} de ${questions.length}</span>
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${getDifficultyBadge(q.difficulty)}">${q.difficulty}</span>
+                                        </div>
+                                        ${currentUser.role === 'admin' ? `
+                                            <div class="flex gap-2">
+                                                <button onclick="openEditQuestionModal('${currentSubTopicId}', '${q.id}')" class="text-xs text-slate-400 hover:text-amber-500 p-1"><i class="fa-solid fa-pen"></i> Editar</button>
+                                                <button onclick="deleteQuestion('${currentSubTopicId}', '${q.id}')" class="text-xs text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i> Excluir</button>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
+                                    <div class="space-y-2 pl-1">
+                                        ${q.options.map((opt, optIdx) => `
+                                            <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
+                                                <input type="radio" name="opt_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
+                                                <span>${opt}</span>
+                                            </label>
+                                        `).join('')}
+                                    </div>
+                                    <div class="pt-2 flex items-center gap-3">
+                                        <button onclick="checkAnswer('${q.id}', ${q.correct}, '${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-xl transition shadow border border-slate-700">
+                                            Responder e Ver Gabarito
+                                        </button>
+                                    </div>
+                                    <div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            else if (currentMainTab === 'simulados') {
+                renderSimuladoView(main);
+            }
+            else if (currentMainTab === 'desempenho') {
+                renderPerformanceView(main);
+            }
+            else if (currentMainTab === 'professor') {
+                renderProfessorDashboard(main);
+            }
+
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function renderPerformanceView(main) {
+            let totalAcertos = 0;
+            let totalErros = 0;
+            let topicPerformances = [];
+
+            topicsData.forEach(t => {
+                const data = studentPerformanceData[t.id] || { acertos: 0, erros: 0 };
+                totalAcertos += data.acertos;
+                totalErros += data.erros;
+                const tot = data.acertos + data.erros;
+                const apr = tot > 0 ? Math.round((data.acertos / tot) * 100) : 0;
+                topicPerformances.push({ title: t.title, aproveitamento: apr, acertos: data.acertos, erros: data.erros });
+            });
+
+            const totalRespondidas = totalAcertos + totalErros;
+            const aproveitamentoGeral = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
+            let melhorTópico = topicPerformances.reduce((prev, current) => (prev.aproveitamento > current.aproveitamento) ? prev : current, topicPerformances[0]);
+
+            main.innerHTML = `
+                <div class="space-y-6 flex flex-col h-full">
+                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
+                        <div>
+                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Métricas Estilo Qconcursos</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Dashboard de Desempenho e Aferição de Modelo</h2>
+                        </div>
+                        <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <div class="text-right">
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Aproveitamento Geral</div>
+                                <div class="text-lg font-black text-amber-500">${aproveitamentoGeral}%</div>
+                            </div>
+                            <div class="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Resolvidas</div>
+                                <div class="text-sm font-bold text-slate-700 dark:text-slate-200">${totalRespondidas}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-amber-500 text-slate-950 p-3 rounded-xl font-black text-lg shadow">
+                                <i class="fa-solid fa-award"></i>
+                            </div>
+                            <div>
+                                <div class="text-[11px] font-bold uppercase text-amber-600 dark:text-amber-400">Aferição do Melhor Modelo de Aprendizagem</div>
+                                <div class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5">Módulo de Maior Destaque: <u>${melhorTópico ? melhorTópico.title : 'N/A'}</u></div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Taxa de assertividade de ${melhorTópico ? melhorTópico.aproveitamento : 0}% neste modelo analítico.</div>
+                            </div>
+                        </div>
+                        <div class="hidden sm:block text-right">
+                            <span class="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-500/30">Modelo Validado</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
+                            <h3 class="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-bar text-amber-500"></i> Aproveitamento Percentual por Módulo (%)
+                            </h3>
+                            <div class="relative h-64">
+                                <canvas id="chartAproveitamento"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
+                            <h3 class="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-amber-500"></i> Volume Comparativo (Acertos vs Erros)
+                            </h3>
+                            <div class="relative h-64 flex items-center justify-center">
+                                <canvas id="chartAcertosErros"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm mt-4">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Módulo / Subtópico</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Acertos</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Erros</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Total</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Aproveitamento</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-right">Ações Rápidas</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                ${topicsData.map(t => {
+                                    const stats = studentPerformanceData[t.id] || { acertos: 0, erros: 0 };
+                                    const tot = stats.acertos + stats.erros;
+                                    const apr = tot > 0 ? Math.round((stats.acertos / tot) * 100) : 0;
+                                    return `
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                            <td class="p-3.5 font-medium text-slate-800 dark:text-slate-200">${t.title}</td>
+                                            <td class="p-3.5 text-center font-bold text-emerald-600 dark:text-emerald-400">${stats.acertos}</td>
+                                            <td class="p-3.5 text-center font-bold text-red-500">${stats.erros}</td>
+                                            <td class="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">${tot}</td>
+                                            <td class="p-3.5 text-center">
+                                                <span class="px-2 py-1 rounded-lg font-black text-[11px] ${apr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : apr >= 40 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}">
+                                                    ${apr}%
+                                                </span>
+                                            </td>
+                                            <td class="p-3.5 text-right space-x-1">
+                                                <button onclick="adjustPerformance('${t.id}', 'acerto', 1)" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold shadow transition">+ Acerto</button>
+                                                <button onclick="adjustPerformance('${t.id}', 'erro', 1)" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold transition">+ Erro</button>
+                                                <button onclick="resetTopicPerformance('${t.id}')" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-300 px-2 py-1 rounded text-[10px] font-bold transition"><i class="fa-solid fa-rotate-right"></i></button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => {
+                renderCharts(topicPerformances, totalAcertos, totalErros);
+            }, 50);
+        }
+
+        function renderCharts(topicPerformances, totalAcertos, totalErros) {
+            const labels = topicsData.map(t => t.id);
+            const dataApr = topicPerformances.map(tp => tp.aproveitamento);
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const textColor = isDark ? '#cbd5e1' : '#64748b';
+
+            const ctxBar = document.getElementById('chartAproveitamento');
+            if (ctxBar) {
+                new Chart(ctxBar, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Aproveitamento (%)',
+                            data: dataApr,
+                            backgroundColor: '#eab308',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: textColor } },
+                            x: { grid: { display: false }, ticks: { color: textColor } }
+                        }
+                    }
+                });
+            }
+
+            const ctxPie = document.getElementById('chartAcertosErros');
+            if (ctxPie) {
+                new Chart(ctxPie, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Acertos', 'Erros'],
+                        datasets: [{
+                            data: [totalAcertos > 0 ? totalAcertos : 1, totalErros],
+                            backgroundColor: ['#10b981', '#ef4444'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { color: textColor, font: { size: 11 } } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderProfessorDashboard(main) {
+            const studentsList = Object.keys(multiStudentPerf);
+
+            main.innerHTML = `
+                <div class="space-y-6">
+                    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-gran-navy text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">Acompanhamento Pedagógico</span>
+                            <h2 class="text-2xl font-black mt-2"><i class="fa-solid fa-chalkboard-user text-amber-400"></i> Painel do Professor • Evolução dos Alunos</h2>
+                            <p class="text-xs text-slate-300 mt-1">Acompanhe detalhadamente o progresso, taxa de acertos e desempenho específico de cada aluno cadastrado no curso preparatório CTRB.</p>
+                        </div>
+                        <div class="bg-amber-500/20 border border-amber-500/40 p-3 rounded-xl text-center">
+                            <div class="text-[10px] uppercase font-bold text-amber-400">Total de Alunos</div>
+                            <div class="text-xl font-black text-white">${studentsList.length} Alunos</div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-users text-amber-500"></i> Relatório Individual de Desempenho por Aluno
+                        </h3>
+
+                        <div class="grid grid-cols-1 gap-4">
+                            ${studentsList.map(studentName => {
+                                const studData = multiStudentPerf[studentName] || {};
+                                let totAc = 0, totEr = 0;
+                                Object.values(studData).forEach(st => {
+                                    totAc += (st.acertos || 0);
+                                    totEr += (st.erros || 0);
+                                });
+                                const totalQ = totAc + totEr;
+                                const mediaApr = totalQ > 0 ? Math.round((totAc / totalQ) * 100) : 0;
+
+                                return `
+                                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                            <div class="flex items-center gap-4">
+                                                <div class="bg-slate-100 dark:bg-slate-800 text-amber-500 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border border-slate-200 dark:border-slate-700 shadow">
+                                                    <i class="fa-solid fa-user-graduate"></i>
+                                                </div>
+                                                <div>
+                                                    <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${studentName}</h4>
+                                                    <p class="text-xs text-slate-500 dark:text-slate-400">Status: Aluno Cadastrado • Total de Questões Resolvidas: ${totalQ}</p>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
+                                                <div class="text-center">
+                                                    <div class="text-[10px] uppercase font-bold text-slate-400">Acertos</div>
+                                                    <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">${totAc}</div>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="text-[10px] uppercase font-bold text-slate-400">Erros</div>
+                                                    <div class="text-sm font-black text-red-500">${totEr}</div>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="text-[10px] uppercase font-bold text-slate-400">Aproveitamento</div>
+                                                    <span class="px-2.5 py-1 rounded-lg font-black text-xs ${mediaApr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}">
+                                                        ${mediaApr}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                            ${topicsData.map(t => {
+                                                const tStats = studData[t.id] || { acertos: 0, erros: 0 };
+                                                const tTot = tStats.acertos + tStats.erros;
+                                                const tApr = tTot > 0 ? Math.round((tStats.acertos / tTot) * 100) : 0;
+                                                return `
+                                                    <div class="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-center">
+                                                        <div class="text-[10px] font-bold text-slate-400 truncate">${t.title}</div>
+                                                        <div class="text-xs font-black text-amber-500 mt-1">${tApr}%</div>
+                                                        <div class="text-[9px] text-slate-500 mt-0.5">${tStats.acertos}A / ${tStats.erros}E</div>
+                                                    </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function adjustPerformance(topicId, type, qty) {
+            // CORREÇÃO: Professor logado testando o sistema não altera as métricas estatísticas dos alunos
+            if (currentUser.role === 'admin') {
+                return;
+            }
+
+            if (!studentPerformanceData[topicId]) {
+                studentPerformanceData[topicId] = { acertos: 0, erros: 0 };
+            }
+            if (type === 'acerto') {
+                studentPerformanceData[topicId].acertos += qty;
+            } else {
+                studentPerformanceData[topicId].erros += qty;
+            }
+            localStorage.setItem('ctrb_student_perf', JSON.stringify(studentPerformanceData));
+
+            if (currentUser.name && currentUser.name !== 'Professor' && currentUser.name !== 'Aluno') {
+                if (!multiStudentPerf[currentUser.name]) {
+                    multiStudentPerf[currentUser.name] = {};
+                }
+                multiStudentPerf[currentUser.name][topicId] = { 
+                    acertos: studentPerformanceData[topicId].acertos, 
+                    erros: studentPerformanceData[topicId].erros 
+                };
+                localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+            }
+
+            renderMainContent();
+        }
+
+        function resetTopicPerformance(topicId) {
+            if (currentUser.role === 'admin') return;
+
+            if (studentPerformanceData[topicId]) {
+                studentPerformanceData[topicId] = { acertos: 0, erros: 0 };
+                localStorage.setItem('ctrb_student_perf', JSON.stringify(studentPerformanceData));
+                renderMainContent();
+            }
+        }
+
+        function getDifficultyBadge(diff) {
+            if (diff === 'Fácil') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+            if (diff === 'Média') return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+            return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
+        }
+
+        function checkAnswer(qId, correctIdx, topicId) {
+            const selected = document.querySelector(`input[name="opt_${qId}"]:checked`) || document.querySelector(`input[name="opt_sim_${qId}"]:checked`);
+            const feedbackDiv = document.getElementById(`feedback_${qId}`);
+
+            if (!selected) {
+                alert('Selecione uma alternativa antes de conferir.');
+                return;
+            }
+
+            const val = parseInt(selected.value);
+            
+            // CORREÇÃO: Removemos classes ocultas anteriores garantindo que o container reapareça com estilo visível
+            feedbackDiv.className = 'text-xs p-4 rounded-xl border mt-2 block';
+
+            let foundQ = null;
+            Object.values(masterQuestions).forEach(arr => {
+                const f = arr.find(q => q.id === qId);
+                if (f) foundQ = f;
+            });
+
+            const tId = topicId || (foundQ ? foundQ.topicId : currentSubTopicId);
+
+            if (val === correctIdx) {
+                adjustPerformance(tId, 'acerto', 1);
+                feedbackDiv.classList.add('bg-emerald-50', 'dark:bg-emerald-950/90', 'border-emerald-300', 'text-emerald-900', 'dark:text-emerald-200');
+                feedbackDiv.innerHTML = `
+                    <div class="font-bold flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 mb-1 text-sm">
+                        <i class="fa-solid fa-circle-check"></i> Resposta Correta! ${currentUser.role === 'admin' ? '(Modo Professor: Não computado)' : '(Computado no Desempenho)'}
+                    </div>
+                    <p class="leading-relaxed">${foundQ ? foundQ.explanation : ''}</p>
+                `;
+            } else {
+                adjustPerformance(tId, 'erro', 1);
+                feedbackDiv.classList.add('bg-red-50', 'dark:bg-red-950/90', 'border-red-300', 'text-red-900', 'dark:text-red-200');
+                feedbackDiv.innerHTML = `
+                    <div class="font-bold flex items-center gap-1.5 text-red-700 dark:text-red-400 mb-1 text-sm">
+                        <i class="fa-solid fa-circle-xmark"></i> Resposta Incorreta. ${currentUser.role === 'admin' ? '(Modo Professor: Não computado)' : '(Computado no Desempenho)'}
+                    </div>
+                    <p class="leading-relaxed">${foundQ ? foundQ.explanation : ''}</p>
+                `;
+            }
+
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        function openEditTopicModal(topicId) {
+            const topic = topicsData.find(t => t.id === topicId);
+            document.getElementById('edit-topic-id').value = topic.id;
+            document.getElementById('edit-topic-title').value = topic.title;
+            document.getElementById('edit-topic-yt').value = topic.ytVideoId || '';
+            if (quillTopicEditor) quillTopicEditor.root.innerHTML = topic.theory || '';
+            document.getElementById('edit-topic-modal').classList.remove('hidden');
+        }
+
+        function closeEditTopicModal() {
+            document.getElementById('edit-topic-modal').classList.add('hidden');
+        }
+
+        function saveTopicChanges(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-topic-id').value;
+            const topic = topicsData.find(t => t.id === id);
+
+            topic.title = document.getElementById('edit-topic-title').value;
+            topic.ytVideoId = document.getElementById('edit-topic-yt').value.trim();
+            topic.theory = quillTopicEditor ? quillTopicEditor.root.innerHTML : topic.theory;
+
+            localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
+            closeEditTopicModal();
+            renderMainContent();
+        }
+
+        function populateTargetTopicsDropdown(selectedId) {
+            const select = document.getElementById('q-edit-target-topic');
+            select.innerHTML = topicsData.map(t => `<option value="${t.id}" ${t.id === selectedId ? 'selected' : ''}>${t.title}</option>`).join('');
+        }
+
+        function openAddQuestionModal(defaultTopicId) {
+            const targetId = defaultTopicId || currentSubTopicId;
+            populateTargetTopicsDropdown(targetId);
+
+            document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-plus-circle text-amber-500"></i> Adicionar Nova Questão';
+            document.getElementById('q-edit-topic-id').value = targetId;
+            document.getElementById('q-edit-id').value = '';
+            document.getElementById('q-edit-difficulty').value = 'Média';
+            document.getElementById('q-edit-statement').value = '';
+            document.getElementById('q-edit-opt0').value = '';
+            document.getElementById('q-edit-opt1').value = '';
+            document.getElementById('q-edit-opt2').value = '';
+            document.getElementById('q-edit-opt3').value = '';
+            document.getElementById('q-edit-opt4').value = '';
+            document.getElementById('q-edit-correct').value = '0';
+            document.getElementById('q-edit-explanation').value = '';
+            document.getElementById('edit-question-modal').classList.remove('hidden');
+        }
+
+        function openEditQuestionModal(topicId, qId) {
+            populateTargetTopicsDropdown(topicId);
+            const q = masterQuestions[topicId].find(item => item.id === qId);
+
+            document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-file-pen text-amber-500"></i> Editar Questão';
+            document.getElementById('q-edit-topic-id').value = topicId;
+            document.getElementById('q-edit-id').value = q.id;
+            document.getElementById('q-edit-difficulty').value = q.difficulty || 'Média';
+            document.getElementById('q-edit-statement').value = q.statement;
+            document.getElementById('q-edit-opt0').value = q.options[0] || '';
+            document.getElementById('q-edit-opt1').value = q.options[1] || '';
+            document.getElementById('q-edit-opt2').value = q.options[2] || '';
+            document.getElementById('q-edit-opt3').value = q.options[3] || '';
+            document.getElementById('q-edit-opt4').value = q.options[4] || '';
+            document.getElementById('q-edit-correct').value = q.correct;
+            document.getElementById('q-edit-explanation').value = q.explanation;
+            document.getElementById('edit-question-modal').classList.remove('hidden');
+        }
+
+        function closeEditQuestionModal() {
+            document.getElementById('edit-question-modal').classList.add('hidden');
+        }
+
+        function saveQuestionChanges(e) {
+            e.preventDefault();
+            const originalTopicId = document.getElementById('q-edit-topic-id').value;
+            const targetTopicId = document.getElementById('q-edit-target-topic').value;
+            const qId = document.getElementById('q-edit-id').value;
+
+            const diff = document.getElementById('q-edit-difficulty').value;
+            const stmt = document.getElementById('q-edit-statement').value;
+            const opts = [
+                document.getElementById('q-edit-opt0').value,
+                document.getElementById('q-edit-opt1').value,
+                document.getElementById('q-edit-opt2').value,
+                document.getElementById('q-edit-opt3').value,
+                document.getElementById('q-edit-opt4').value
+            ];
+            const correct = parseInt(document.getElementById('q-edit-correct').value);
+            const expl = document.getElementById('q-edit-explanation').value;
+
+            if (qId) {
+                const index = masterQuestions[originalTopicId].findIndex(item => item.id === qId);
+                if (index !== -1) {
+                    const questionObj = masterQuestions[originalTopicId][index];
+                    questionObj.difficulty = diff;
+                    questionObj.statement = stmt;
+                    questionObj.options = opts;
+                    questionObj.correct = correct;
+                    questionObj.explanation = expl;
+
+                    if (originalTopicId !== targetTopicId) {
+                        masterQuestions[originalTopicId].splice(index, 1);
+                        questionObj.topicId = targetTopicId;
+                        if (!masterQuestions[targetTopicId]) masterQuestions[targetTopicId] = [];
+                        masterQuestions[targetTopicId].push(questionObj);
+                    }
+                }
+            } else {
+                const newQId = `${targetTopicId}_q${Date.now()}`;
+                if (!masterQuestions[targetTopicId]) masterQuestions[targetTopicId] = [];
+                masterQuestions[targetTopicId].push({
+                    id: newQId,
+                    topicId: targetTopicId,
+                    difficulty: diff,
+                    statement: stmt,
+                    options: opts,
+                    correct: correct,
+                    explanation: expl
+                });
+            }
+
+            localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
+            closeEditQuestionModal();
+            renderMainContent();
+        }
+
+        function deleteQuestion(topicId, qId) {
+            if (confirm("Tem certeza que deseja excluir esta questão?")) {
+                masterQuestions[topicId] = masterQuestions[topicId].filter(q => q.id !== qId);
+                localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
+                renderMainContent();
+            }
+        }
+
+        function openSimuladoModal() {
+            const container = document.getElementById('sim-topics-checkboxes');
+            container.innerHTML = topicsData.map(t => `
+                <label class="flex items-center gap-2 cursor-pointer hover:bg-white dark:hover:bg-slate-700 p-1 rounded">
+                    <input type="checkbox" name="sim_topics" value="${t.id}" checked class="rounded text-amber-500 focus:ring-amber-400">
+                    <span class="text-slate-700 dark:text-slate-300">${t.title}</span>
+                </label>
+            `).join('');
+            document.getElementById('simulado-modal').classList.remove('hidden');
+        }
+
+        function closeSimuladoModal() {
+            document.getElementById('simulado-modal').classList.add('hidden');
+        }
+
+        function generateSimulado(e) {
+            e.preventDefault();
+            const title = document.getElementById('sim-title').value;
+            const selectedTopics = Array.from(document.querySelectorAll('input[name="sim_topics"]:checked')).map(cb => cb.value);
+            const qty = parseInt(document.getElementById('sim-qty').value);
+
+            if (selectedTopics.length === 0) {
+                alert('Selecione pelo menos um subtópico.');
+                return;
+            }
+
+            let pool = [];
+            selectedTopics.forEach(topId => {
+                pool = pool.concat(masterQuestions[topId] || []);
+            });
+
+            pool.sort(() => Math.random() - 0.5);
+            currentSimulado = {
+                title: title,
+                questions: pool.slice(0, Math.min(qty, pool.length)),
+                createdAt: new Date().toLocaleDateString('pt-BR')
+            };
+
+            closeSimuladoModal();
+            switchMainTab('simulados');
+        }
+
+        function renderSimuladoView(main) {
+            if (!currentSimulado) {
+                main.innerHTML = `
+                    <div class="text-center py-12 space-y-4">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                            <i class="fa-solid fa-file-circle-question text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Nenhum Simulado Gerado</h3>
+                        <p class="text-xs text-slate-500 max-w-sm mx-auto">Você pode gerar simulados personalizados acessando o painel de moderação.</p>
+                        <button onclick="openSimuladoModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold transition shadow">
+                            Gerar Simulado Agora
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            main.innerHTML = `
+                <div class="space-y-6">
+                    <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-5 rounded-2xl flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase">Caderno Impresso / Online</span>
+                            <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">${currentSimulado.title}</h2>
+                            <p class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">Criado em ${currentSimulado.createdAt} • Total: ${currentSimulado.questions.length} Questões</p>
+                        </div>
+                        <button onclick="window.print()" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-print"></i> Imprimir Caderno de Prova
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        ${currentSimulado.questions.map((q, idx) => `
+                            <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1} de ${currentSimulado.questions.length}</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${getDifficultyBadge(q.difficulty)}">${q.difficulty}</span>
+                                </div>
+                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
+                                <div class="space-y-2 pl-1">
+                                    ${q.options.map((opt, optIdx) => `
+                                        <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                                            <input type="radio" name="opt_sim_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
+                                            <span>${opt}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                                <div class="pt-2 flex items-center gap-3">
+                                    <button onclick="checkAnswer('${q.id}', ${q.correct}, '${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-xl transition shadow">
+                                        Conferir Gabarito
+                                    </button>
+                                </div>
+                                <div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+    </script>
+</body>
+</html>
