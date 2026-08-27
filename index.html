@@ -144,6 +144,49 @@
 
     <!-- MODAIS DE GERENCIAMENTO E AUTENTICAÇÃO -->
 
+    <!-- MODAL ADICIONAR ITEM AO CRONOGRAMA -->
+    <div id="add-cron-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeAddCronModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2">
+                <i class="fa-solid fa-calendar-plus text-amber-500"></i> Adicionar Meta ao Cronograma
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Insira um novo compromisso ou tópico de estudo.</p>
+            <form onsubmit="saveNewCronItem(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Título da Meta / Tópico</label>
+                    <input type="text" id="cron-new-title" required placeholder="Ex: Revisão de Geometria Plana" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Fase / Bloco de Estudo</label>
+                    <input type="text" id="cron-new-semana" required placeholder="Ex: Semana 5" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Prioridade</label>
+                    <select id="cron-new-prioridade" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none font-bold">
+                        <option value="Alta">Alta</option>
+                        <option value="Média" selected>Média</option>
+                        <option value="Baixa">Baixa</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Data Alvo</label>
+                    <input type="date" id="cron-new-date" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Observações / Plano de Ação</label>
+                    <textarea id="cron-new-notes" rows="2" placeholder="Descreva os exercícios ou teoria a estudar..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAddCronModal()" class="px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300">Cancelar</button>
+                    <button type="submit" class="px-3 py-1.5 bg-amber-500 text-slate-950 font-bold rounded-lg shadow hover:bg-amber-600">Adicionar Meta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL DE AUTENTICAÇÃO -->
     <div id="auth-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 relative">
@@ -230,6 +273,10 @@
                 <div>
                     <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Aba Simulados</label>
                     <input type="text" id="tab-label-simulados" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Aba Cronograma</label>
+                    <input type="text" id="tab-label-cronograma" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg">
                 </div>
                 <div>
                     <label class="block font-bold text-slate-600 dark:text-slate-300 mb-1">Aba Desempenho</label>
@@ -410,6 +457,7 @@
             teoria: 'Materiais Teóricos',
             questoes: 'Banco de Questões',
             simulados: 'Simulados',
+            cronograma: 'Cronograma',
             desempenho: 'Desempenho'
         };
 
@@ -418,24 +466,20 @@
         let currentSimulado = null;
         let quillTopicEditor = null;
 
-        // FUNÇÃO CORRIGIDA PARA SUPORTAR PLAYLISTS E VÍDEOS INDIVIDUAIS
         function getYoutubeEmbedUrl(input) {
             if (!input) return '';
             const str = input.trim();
             
-            // 1. Procura por ID de Playlist no parâmetro "list=" em qualquer tipo de URL ou string
             const listMatch = str.match(/[?&]list=([^&?#]+)/);
             if (listMatch && listMatch[1]) {
                 return `https://www.youtube.com/embed/videoseries?list=${listMatch[1]}`;
             }
 
-            // 2. Se for passado o ID direto da playlist (começando com PL ou OLAK5uy_)
             if (str.startsWith('PL') || str.startsWith('OLAK5uy_')) {
                 const cleanListId = str.split(/[?&#]/)[0];
                 return `https://www.youtube.com/embed/videoseries?list=${cleanListId}`;
             }
 
-            // 3. Links de vídeos individuais (watch?v=, youtu.be/, embed/ ou ID direto)
             let videoId = '';
             if (str.includes('watch?v=')) {
                 videoId = str.split('v=')[1].split(/[&?#]/)[0];
@@ -495,6 +539,35 @@
             { id: '2.10', title: '2.10 NOÇÕES DE ESTATÍSTICA BÁSICA', ytVideoId: 'U_z2dZ3-k_Q', theory: '<h3>Média, Mediana e Moda</h3><p>Análise de tabelas e gráficos estatísticos.</p>' },
             { id: '2.11', title: '2.11 CONTAGEM E PROBABILIDADE', ytVideoId: '9vW7Q5aF42w', theory: '<h3>Análise Combinatória e Probabilidade</h3><p>Espaço amostral e eventos prováveis.</p>' }
         ];
+
+        // ENGINE DE CRONOGRAMA DE ESTUDOS
+        function getDefaultCronograma() {
+            return topicsData.map((t, idx) => ({
+                id: `cron_${t.id}`,
+                semana: `Semana ${Math.floor(idx / 2) + 1}`,
+                title: t.title,
+                status: 'Pendente', // 'Pendente', 'Em Andamento', 'Concluído'
+                prioridade: idx < 4 ? 'Alta' : (idx < 8 ? 'Média' : 'Baixa'),
+                dataAlvo: '',
+                notes: `Revisar teoria do tópico ${t.id} e resolver 20 questões.`
+            }));
+        }
+
+        function getUserCronograma() {
+            const key = `ctrb_cronograma_${currentUser.name || 'default'}`;
+            const data = localStorage.getItem(key);
+            if (!data) {
+                const initial = getDefaultCronograma();
+                localStorage.setItem(key, JSON.stringify(initial));
+                return initial;
+            }
+            return JSON.parse(data);
+        }
+
+        function saveUserCronograma(cronData) {
+            const key = `ctrb_cronograma_${currentUser.name || 'default'}`;
+            localStorage.setItem(key, JSON.stringify(cronData));
+        }
 
         let masterQuestions = JSON.parse(localStorage.getItem('ctrb_questions_data')) || {};
 
@@ -585,65 +658,53 @@
             }
         }
 
+        function getDifficultyBadge(diff) {
+            if (diff === 'Fácil') return 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300';
+            if (diff === 'Média') return 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300';
+            return 'bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300';
+        }
+
         function renderNavTabs() {
             const nav = document.getElementById('main-nav');
             let html = '';
 
-            if (currentUser.role === 'aluno') {
-                html = `
-                    <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
-                    </button>
-                    <button id="tab-nav-teoria" onclick="switchMainTab('teoria')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-book-open"></i> ${tabLabels.teoria}
-                    </button>
-                    <button id="tab-nav-questoes" onclick="switchMainTab('questoes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-list-check"></i> ${tabLabels.questoes}
-                    </button>
-                    <button id="tab-nav-simulados" onclick="switchMainTab('simulados')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-square-poll-vertical"></i> ${tabLabels.simulados}
+            const isVisitor = currentUser.role === 'visitante';
+
+            html += `
+                <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
+                </button>
+                <button id="tab-nav-teoria" onclick="switchMainTab('teoria')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-book-open"></i> ${tabLabels.teoria}
+                </button>
+                <button id="tab-nav-questoes" onclick="switchMainTab('questoes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-list-check"></i> ${tabLabels.questoes}
+                </button>
+                <button id="tab-nav-simulados" onclick="switchMainTab('simulados')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i class="fa-solid fa-square-poll-vertical"></i> ${tabLabels.simulados}
+                </button>
+            `;
+
+            // Aba Cronograma e Desempenho apenas para alunos logados e professores
+            if (!isVisitor) {
+                html += `
+                    <button id="tab-nav-cronograma" onclick="switchMainTab('cronograma')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
+                        <i class="fa-solid fa-calendar-check text-amber-400"></i> ${tabLabels.cronograma || 'Cronograma'}
                     </button>
                     <button id="tab-nav-desempenho" onclick="switchMainTab('desempenho')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
                         <i class="fa-solid fa-chart-line"></i> ${tabLabels.desempenho}
                     </button>
                 `;
-            } else if (currentUser.role === 'admin') {
-                html = `
-                    <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
-                    </button>
-                    <button id="tab-nav-teoria" onclick="switchMainTab('teoria')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-book-open"></i> ${tabLabels.teoria}
-                    </button>
-                    <button id="tab-nav-questoes" onclick="switchMainTab('questoes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-list-check"></i> ${tabLabels.questoes}
-                    </button>
-                    <button id="tab-nav-simulados" onclick="switchMainTab('simulados')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-square-poll-vertical"></i> ${tabLabels.simulados}
-                    </button>
-                    <button id="tab-nav-desempenho" onclick="switchMainTab('desempenho')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-chart-line"></i> ${tabLabels.desempenho}
-                    </button>
+            }
+
+            if (currentUser.role === 'admin') {
+                html += `
                     <button id="tab-nav-professor" onclick="switchMainTab('professor')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-amber-400 hover:text-white hover:bg-slate-700/50 border border-amber-500/30">
                         <i class="fa-solid fa-chalkboard-user"></i> Painel do Professor
                     </button>
                 `;
-            } else {
-                html = `
-                    <button id="tab-nav-edital" onclick="switchMainTab('edital')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-file-contract"></i> ${tabLabels.edital}
-                    </button>
-                    <button id="tab-nav-teoria" onclick="switchMainTab('teoria')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-book-open"></i> ${tabLabels.teoria}
-                    </button>
-                    <button id="tab-nav-questoes" onclick="switchMainTab('questoes')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-list-check"></i> ${tabLabels.questoes}
-                    </button>
-                    <button id="tab-nav-simulados" onclick="switchMainTab('simulados')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
-                        <i class="fa-solid fa-square-poll-vertical"></i> ${tabLabels.simulados}
-                    </button>
-                `;
             }
+
             nav.innerHTML = html;
         }
 
@@ -776,7 +837,7 @@
             alert(`Cadastro realizado com sucesso! Bem-vindo(a), ${name}.`);
             closeAuthModal();
             updateUserUI();
-            switchMainTab('edital');
+            switchMainTab('cronograma');
         }
 
         function handleAdminLogin(e) {
@@ -798,7 +859,7 @@
                     syncStudentProgression();
                     updateUserUI();
                     closeAuthModal();
-                    switchMainTab('edital');
+                    switchMainTab('cronograma');
                 } else {
                     alert('Credenciais inválidas. Verifique seu usuário e senha.');
                 }
@@ -809,13 +870,15 @@
             if ((tab === 'professor') && currentUser.role !== 'admin') {
                 tab = 'edital';
             }
-            if (currentUser.role === 'visitante' && tab === 'desempenho') {
+            if (currentUser.role === 'visitante' && (tab === 'desempenho' || tab === 'cronograma')) {
+                alert('Aba restrita a alunos logados e moderadores. Por favor, faça login ou cadastre-se!');
+                openAuthModal();
                 tab = 'edital';
             }
 
             currentMainTab = tab;
             
-            const tabs = ['edital', 'teoria', 'questoes', 'simulados', 'desempenho', 'professor'];
+            const tabs = ['edital', 'teoria', 'questoes', 'simulados', 'cronograma', 'desempenho', 'professor'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tab-nav-${t}`);
                 if (btn) {
@@ -986,6 +1049,9 @@
             else if (currentMainTab === 'simulados') {
                 renderSimuladoView(main);
             }
+            else if (currentMainTab === 'cronograma') {
+                renderCronogramaView(main);
+            }
             else if (currentMainTab === 'desempenho') {
                 renderPerformanceView(main);
             }
@@ -994,6 +1060,205 @@
             }
 
             if (window.MathJax) MathJax.typesetPromise();
+        }
+
+        // VISUALIZAÇÃO E AÇÕES DO CRONOGRAMA DE ESTUDOS
+        function renderCronogramaView(main) {
+            const cronData = getUserCronograma();
+            const total = cronData.length;
+            const concluidos = cronData.filter(i => i.status === 'Concluído').length;
+            const emAndamento = cronData.filter(i => i.status === 'Em Andamento').length;
+            const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+
+            main.innerHTML = `
+                <div class="space-y-6">
+                    <!-- HEADER DO CRONOGRAMA -->
+                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
+                        <div>
+                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Plano Estratégico de Estudos</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-check text-amber-500"></i> Cronograma de Estudos Interativo
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Defina prazos, acompanhe o progresso do edital e adicione observações personalizadas.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="openAddCronModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i> Nova Meta
+                            </button>
+                            <button onclick="resetCronogramaToDefault()" class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700" title="Restaurar Modelo Padrão do Edital">
+                                <i class="fa-solid fa-rotate-left"></i> Restaurar Padrão
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- METRICAS E BARRA DE PROGRESSO -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Progresso Geral</div>
+                                <div class="text-2xl font-black text-amber-500">${pct}%</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-bars-progress"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Tópicos Concluídos</div>
+                                <div class="text-2xl font-black text-emerald-500">${concluidos} <span class="text-xs text-slate-400 font-normal">/ ${total}</span></div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-check-double"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Em Andamento</div>
+                                <div class="text-2xl font-black text-blue-500">${emAndamento}</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-spinner"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BARRA VISUAL DE PROGRESSO -->
+                    <div class="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden shadow-inner">
+                        <div class="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-300" style="width: ${pct}%"></div>
+                    </div>
+
+                    <!-- TABELA INTERATIVA DO CRONOGRAMA -->
+                    <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Status</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Fase</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Tópico do Edital</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Prioridade</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Data Alvo</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Anotações / Plano</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                ${cronData.map((item, idx) => {
+                                    const isDone = item.status === 'Concluído';
+                                    const isInProgress = item.status === 'Em Andamento';
+                                    return `
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition ${isDone ? 'bg-emerald-50/20 dark:bg-emerald-950/10' : ''}">
+                                            <td class="p-3 text-center">
+                                                <button onclick="toggleCronStatus('${item.id}')" class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition flex items-center gap-1 mx-auto ${isDone ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-blue-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-400 hover:text-slate-950'}">
+                                                    <i class="fa-solid ${isDone ? 'fa-check-circle' : isInProgress ? 'fa-spinner fa-spin' : 'fa-circle'}"></i>
+                                                    ${item.status}
+                                                </button>
+                                            </td>
+                                            <td class="p-3 font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">${item.semana}</td>
+                                            <td class="p-3 font-semibold text-slate-800 dark:text-slate-200 ${isDone ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${item.title}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.prioridade === 'Alta' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}">
+                                                    ${item.prioridade}
+                                                </span>
+                                            </td>
+                                            <td class="p-3">
+                                                <input type="date" value="${item.dataAlvo || ''}" onchange="updateCronDate('${item.id}', this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                            </td>
+                                            <td class="p-3">
+                                                <input type="text" value="${item.notes || ''}" onchange="updateCronNotes('${item.id}', this.value)" placeholder="Adicione notas..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                            </td>
+                                            <td class="p-3 text-right whitespace-nowrap">
+                                                <button onclick="deleteCronItem('${item.id}')" class="text-red-400 hover:text-red-600 p-1" title="Excluir Meta"><i class="fa-solid fa-trash text-xs"></i></button>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleCronStatus(id) {
+            const cronData = getUserCronograma();
+            const item = cronData.find(i => i.id === id);
+            if (item) {
+                if (item.status === 'Pendente') item.status = 'Em Andamento';
+                else if (item.status === 'Em Andamento') item.status = 'Concluído';
+                else item.status = 'Pendente';
+                saveUserCronograma(cronData);
+                renderMainContent();
+            }
+        }
+
+        function updateCronDate(id, value) {
+            const cronData = getUserCronograma();
+            const item = cronData.find(i => i.id === id);
+            if (item) {
+                item.dataAlvo = value;
+                saveUserCronograma(cronData);
+            }
+        }
+
+        function updateCronNotes(id, value) {
+            const cronData = getUserCronograma();
+            const item = cronData.find(i => i.id === id);
+            if (item) {
+                item.notes = value;
+                saveUserCronograma(cronData);
+            }
+        }
+
+        function deleteCronItem(id) {
+            if (confirm('Deseja excluir esta meta do cronograma?')) {
+                let cronData = getUserCronograma();
+                cronData = cronData.filter(i => i.id !== id);
+                saveUserCronograma(cronData);
+                renderMainContent();
+            }
+        }
+
+        function resetCronogramaToDefault() {
+            if (confirm('Deseja restaurar o cronograma padrão baseado nos tópicos do edital? Suas edições personalizadas serão redefinidas.')) {
+                const initial = getDefaultCronograma();
+                saveUserCronograma(initial);
+                renderMainContent();
+            }
+        }
+
+        function openAddCronModal() {
+            document.getElementById('add-cron-modal').classList.remove('hidden');
+        }
+
+        function closeAddCronModal() {
+            document.getElementById('add-cron-modal').classList.add('hidden');
+        }
+
+        function saveNewCronItem(e) {
+            e.preventDefault();
+            const title = document.getElementById('cron-new-title').value.trim();
+            const semana = document.getElementById('cron-new-semana').value.trim();
+            const prioridade = document.getElementById('cron-new-prioridade').value;
+            const dataAlvo = document.getElementById('cron-new-date').value;
+            const notes = document.getElementById('cron-new-notes').value.trim();
+
+            const cronData = getUserCronograma();
+            cronData.push({
+                id: `cron_custom_${Date.now()}`,
+                semana: semana,
+                title: title,
+                status: 'Pendente',
+                prioridade: prioridade,
+                dataAlvo: dataAlvo,
+                notes: notes
+            });
+
+            saveUserCronograma(cronData);
+            closeAddCronModal();
+            renderMainContent();
+            alert('Nova meta adicionada ao seu cronograma!');
         }
 
         function checkAnswer(qId, correctIdx, topicId) {
@@ -1207,6 +1472,9 @@
             document.getElementById('tab-label-teoria').value = tabLabels.teoria;
             document.getElementById('tab-label-questoes').value = tabLabels.questoes;
             document.getElementById('tab-label-simulados').value = tabLabels.simulados;
+            if (document.getElementById('tab-label-cronograma')) {
+                document.getElementById('tab-label-cronograma').value = tabLabels.cronograma || 'Cronograma';
+            }
             document.getElementById('tab-label-desempenho').value = tabLabels.desempenho;
             document.getElementById('edit-tabs-modal').classList.remove('hidden');
         }
@@ -1221,6 +1489,9 @@
             tabLabels.teoria = document.getElementById('tab-label-teoria').value.trim();
             tabLabels.questoes = document.getElementById('tab-label-questoes').value.trim();
             tabLabels.simulados = document.getElementById('tab-label-simulados').value.trim();
+            if (document.getElementById('tab-label-cronograma')) {
+                tabLabels.cronograma = document.getElementById('tab-label-cronograma').value.trim();
+            }
             tabLabels.desempenho = document.getElementById('tab-label-desempenho').value.trim();
 
             localStorage.setItem('ctrb_tab_labels', JSON.stringify(tabLabels));
@@ -1266,7 +1537,6 @@
                 return;
             }
 
-            // Embaralha as questões
             pool.sort(() => 0.5 - Math.random());
             const selectedQuestions = pool.slice(0, Math.min(qty, pool.length));
 
@@ -1392,7 +1662,6 @@
                         </div>
                     </div>
 
-                    <!-- GRÁFICOS VISUAIS -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
                             <h3 class="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
@@ -1413,7 +1682,6 @@
                         </div>
                     </div>
 
-                    <!-- TABELA DE RESULTADOS -->
                     <div class="space-y-2 mt-2">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
                             <i class="fa-solid fa-list-check text-amber-500"></i> Detalhamento por Módulo
@@ -1523,8 +1791,6 @@
         }
 
         function renderProfessorDashboard(main) {
-            const studentsList = Object.keys(multiStudentPerf);
-
             main.innerHTML = `
                 <div class="space-y-6">
                     <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-gran-navy text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -1550,7 +1816,6 @@
                         </div>
                     </div>
 
-                    <!-- GESTÃO DO LINK DA PLANILHA -->
                     <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-3">
                         <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                             <i class="fa-solid fa-file-excel text-emerald-500"></i> Gestão do Link da Planilha do Professor
@@ -1561,113 +1826,34 @@
                                 <input type="url" id="prof-sheets-url" value="${sheetsLink}" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none">
                             </div>
                             <div class="flex gap-2 w-full md:w-auto md:mt-5">
-                                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold shadow transition whitespace-nowrap">
-                                    <i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Link
+                                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold transition shadow whitespace-nowrap">
+                                    Salvar Link
                                 </button>
-                                <a href="${sheetsLink}" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition flex items-center gap-1 whitespace-nowrap">
-                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Acessar
+                                <a href="${sheetsLink}" target="_blank" rel="noopener noreferrer" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap border border-slate-700">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Planilha
                                 </a>
                             </div>
                         </form>
-                    </div>
-
-                    <!-- RELATÓRIOS DOS ALUNOS -->
-                    <div class="space-y-4">
-                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-                            <i class="fa-solid fa-users text-amber-500"></i> Relatório Individual dos Alunos Cadastrados
-                        </h3>
-
-                        ${studentsList.length === 0 ? `
-                            <div class="text-center py-12 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl space-y-2">
-                                <i class="fa-solid fa-user-slash text-2xl text-amber-500"></i>
-                                <h4 class="text-sm font-bold text-slate-700 dark:text-slate-200">Nenhum Relatório de Aluno Encontrado</h4>
-                                <p class="text-xs text-slate-500">Assim que os alunos logarem ou resolverem questões, os relatórios aparecerão aqui.</p>
-                            </div>
-                        ` : `
-                            <div class="grid grid-cols-1 gap-4">
-                                ${studentsList.map(studentName => {
-                                    const studData = multiStudentPerf[studentName] || {};
-                                    let totAc = 0, totEr = 0;
-                                    Object.values(studData).forEach(st => {
-                                        totAc += (st.acertos || 0);
-                                        totEr += (st.erros || 0);
-                                    });
-                                    const totalQ = totAc + totEr;
-                                    const mediaApr = totalQ > 0 ? Math.round((totAc / totalQ) * 100) : 0;
-
-                                    return `
-                                        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                                <div class="flex items-center gap-4">
-                                                    <div class="bg-slate-100 dark:bg-slate-800 text-amber-500 w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border border-slate-200 dark:border-slate-700 shadow">
-                                                        <i class="fa-solid fa-user-graduate"></i>
-                                                    </div>
-                                                    <div>
-                                                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${studentName}</h4>
-                                                        <p class="text-xs text-slate-500 dark:text-slate-400">Total de Questões Resolvidas: ${totalQ}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
-                                                    <div class="text-center">
-                                                        <div class="text-[10px] uppercase font-bold text-slate-400">Acertos</div>
-                                                        <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">${totAc}</div>
-                                                    </div>
-                                                    <div class="text-center">
-                                                        <div class="text-[10px] uppercase font-bold text-slate-400">Erros</div>
-                                                        <div class="text-sm font-black text-red-500">${totEr}</div>
-                                                    </div>
-                                                    <div class="text-center">
-                                                        <div class="text-[10px] uppercase font-bold text-slate-400">Aproveitamento</div>
-                                                        <span class="px-2.5 py-1 rounded-lg font-black text-xs ${mediaApr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}">
-                                                            ${mediaApr}%
-                                                        </span>
-                                                    </div>
-                                                    <button onclick="deleteStudentReport('${studentName}')" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition shadow flex items-center gap-1">
-                                                        <i class="fa-solid fa-trash-can"></i> Excluir
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        `}
                     </div>
                 </div>
             `;
         }
 
-        function getDifficultyBadge(difficulty) {
-            if (difficulty === 'Fácil') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
-            if (difficulty === 'Média') return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
-            return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
-        }
-
         function saveSheetsLink(e) {
             e.preventDefault();
-            const url = document.getElementById('prof-sheets-url').value.trim();
-            sheetsLink = url;
+            sheetsLink = document.getElementById('prof-sheets-url').value.trim();
             localStorage.setItem('ctrb_sheets_link', sheetsLink);
-            alert('Link da planilha atualizado!');
-        }
-
-        function deleteStudentReport(name) {
-            if (confirm(`Deseja realmente excluir o relatório do aluno ${name}?`)) {
-                delete multiStudentPerf[name];
-                localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
-                renderMainContent();
-            }
+            alert('Link da planilha salvo com sucesso!');
         }
 
         function exportDataBackup() {
             const data = {
                 topicsData,
                 masterQuestions,
-                multiStudentPerf,
                 registeredStudents,
-                sheetsLink,
-                tabLabels
+                multiStudentPerf,
+                tabLabels,
+                sheetsLink
             };
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1675,7 +1861,6 @@
             a.href = url;
             a.download = `ctrb_backup_${new Date().toISOString().slice(0, 10)}.json`;
             a.click();
-            URL.revokeObjectURL(url);
         }
 
         function importDataBackup(e) {
@@ -1683,20 +1868,20 @@
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(evt) {
+            reader.onload = (event) => {
                 try {
-                    const parsed = JSON.parse(evt.target.result);
+                    const parsed = JSON.parse(event.target.result);
                     if (parsed.topicsData) localStorage.setItem('ctrb_topics_data', JSON.stringify(parsed.topicsData));
                     if (parsed.masterQuestions) localStorage.setItem('ctrb_questions_data', JSON.stringify(parsed.masterQuestions));
-                    if (parsed.multiStudentPerf) localStorage.setItem('ctrb_multi_perf', JSON.stringify(parsed.multiStudentPerf));
                     if (parsed.registeredStudents) localStorage.setItem('ctrb_students_db', JSON.stringify(parsed.registeredStudents));
-                    if (parsed.sheetsLink) localStorage.setItem('ctrb_sheets_link', parsed.sheetsLink);
+                    if (parsed.multiStudentPerf) localStorage.setItem('ctrb_multi_perf', JSON.stringify(parsed.multiStudentPerf));
                     if (parsed.tabLabels) localStorage.setItem('ctrb_tab_labels', JSON.stringify(parsed.tabLabels));
+                    if (parsed.sheetsLink) localStorage.setItem('ctrb_sheets_link', parsed.sheetsLink);
 
-                    alert('Backup restaurado com sucesso! Recarregando...');
+                    alert('Backup restaurado com sucesso! A página será recarregada.');
                     window.location.reload();
                 } catch (err) {
-                    alert('Arquivo de backup inválido.');
+                    alert('Erro ao importar arquivo JSON de backup.');
                 }
             };
             reader.readAsText(file);
