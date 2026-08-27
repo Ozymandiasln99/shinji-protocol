@@ -1651,20 +1651,19 @@
                     <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                         <div>
                             <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório de Evolução</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
-                                <i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho de ${uName}
-                            </h2>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho Geral</h2>
                         </div>
+                        <span class="text-xs font-black bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-xl">Taxa Geral: ${taxaAcerto}%</span>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Total de Questões Feitas</div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Respondidas</div>
                                 <div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div>
                             </div>
-                            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-list-check"></i>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-calculator"></i>
                             </div>
                         </div>
 
@@ -1674,38 +1673,35 @@
                                 <div class="text-2xl font-black text-emerald-500">${totalAcertos}</div>
                             </div>
                             <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-circle-check"></i>
+                                <i class="fa-solid fa-check"></i>
                             </div>
                         </div>
 
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Taxa de Acerto</div>
-                                <div class="text-2xl font-black text-amber-500">${taxaAcerto}%</div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Erros</div>
+                                <div class="text-2xl font-black text-red-500">${totalErros}</div>
                             </div>
-                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-chart-pie"></i>
+                            <div class="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-xmark"></i>
                             </div>
                         </div>
                     </div>
 
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4">
-                        <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-2">
-                            Detalhamento por Subtópico
-                        </h3>
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider">Desempenho por Tópico do Edital</h3>
                         <div class="space-y-3">
                             ${topicsData.map(t => {
                                 const stat = studentPerf[t.id] || { acertos: 0, erros: 0 };
-                                const total = stat.acertos + stat.erros;
-                                const pct = total > 0 ? Math.round((stat.acertos / total) * 100) : 0;
+                                const tTot = stat.acertos + stat.erros;
+                                const tPct = tTot > 0 ? Math.round((stat.acertos / tTot) * 100) : 0;
                                 return `
-                                    <div class="space-y-1">
-                                        <div class="flex justify-between text-xs font-semibold">
-                                            <span class="text-slate-700 dark:text-slate-300">${t.title}</span>
-                                            <span class="text-slate-500 dark:text-slate-400">${stat.acertos}/${total} (${pct}%)</span>
-                                        </div>
-                                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                            <div class="bg-amber-500 h-full" style="width: ${pct}%"></div>
+                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                        <div class="text-xs font-bold text-slate-800 dark:text-slate-200">${t.title}</div>
+                                        <div class="flex items-center gap-3 text-xs">
+                                            <span class="text-emerald-600 dark:text-emerald-400 font-bold">Acertos: ${stat.acertos}</span>
+                                            <span class="text-red-500 font-bold">Erros: ${stat.erros}</span>
+                                            <span class="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded font-black">${tPct}%</span>
                                         </div>
                                     </div>
                                 `;
@@ -1716,304 +1712,156 @@
             `;
         }
 
-        // PAINEL DO PROFESSOR COM GESTÃO E ALTERAÇÃO DO CRONOGRAMA DOS ALUNOS
-        function profSelectStudent(name) {
-            profSelectedStudentName = name;
-            renderMainContent();
-        }
-
-        function profToggleCronStatus(studentName, itemId) {
-            const cronData = getStudentCronogramaByName(studentName);
-            const item = cronData.find(i => i.id === itemId);
-            if (item) {
-                if (item.status === 'Pendente') item.status = 'Em Andamento';
-                else if (item.status === 'Em Andamento') item.status = 'Concluído';
-                else item.status = 'Pendente';
-                saveStudentCronogramaByName(studentName, cronData);
-                renderMainContent();
-            }
-        }
-
-        function profUpdateCronDate(studentName, itemId, val) {
-            const cronData = getStudentCronogramaByName(studentName);
-            const item = cronData.find(i => i.id === itemId);
-            if (item) {
-                item.dataAlvo = val;
-                saveStudentCronogramaByName(studentName, cronData);
-            }
-        }
-
-        function profUpdateCronNotes(studentName, itemId, val) {
-            const cronData = getStudentCronogramaByName(studentName);
-            const item = cronData.find(i => i.id === itemId);
-            if (item) {
-                item.notes = val;
-                saveStudentCronogramaByName(studentName, cronData);
-            }
-        }
-
-        function profDeleteCronItem(studentName, itemId) {
-            if (confirm(`Deseja remover esta meta do cronograma de ${studentName}?`)) {
-                let cronData = getStudentCronogramaByName(studentName);
-                cronData = cronData.filter(i => i.id !== itemId);
-                saveStudentCronogramaByName(studentName, cronData);
-                renderMainContent();
-            }
-        }
-
-        function profAddCronItem(e, studentName) {
-            e.preventDefault();
-            const title = document.getElementById('prof-cron-title').value.trim();
-            const semana = document.getElementById('prof-cron-semana').value.trim();
-            const prioridade = document.getElementById('prof-cron-prioridade').value;
-            const dataAlvo = document.getElementById('prof-cron-date').value;
-            const notes = document.getElementById('prof-cron-notes').value.trim();
-
-            const cronData = getStudentCronogramaByName(studentName);
-            cronData.push({
-                id: `cron_prof_${Date.now()}`,
-                semana: semana,
-                title: title,
-                status: 'Pendente',
-                prioridade: prioridade,
-                dataAlvo: dataAlvo,
-                notes: notes
-            });
-
-            saveStudentCronogramaByName(studentName, cronData);
-            renderMainContent();
-            alert(`Meta adicionada ao cronograma de ${studentName}!`);
-        }
-
+        // PAINEL DO PROFESSOR COM BOTÕES CLICÁVEIS PARA RELATÓRIO E CRONOGRAMA DOS ALUNOS
         function renderProfessorDashboard(main) {
-            if (registeredStudents.length > 0 && !profSelectedStudentName) {
-                profSelectedStudentName = registeredStudents[0].name;
-            }
-
-            let totalQuestionsCount = 0;
-            Object.values(masterQuestions).forEach(arr => {
-                totalQuestionsCount += arr.length;
-            });
-
-            const currentStudentCron = profSelectedStudentName ? getStudentCronogramaByName(profSelectedStudentName) : [];
-            const cronTotal = currentStudentCron.length;
-            const cronDone = currentStudentCron.filter(i => i.status === 'Concluído').length;
-            const cronPct = cronTotal > 0 ? Math.round((cronDone / cronTotal) * 100) : 0;
-
             main.innerHTML = `
                 <div class="space-y-6">
-                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
+                    <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                         <div>
-                            <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-md uppercase">Área Restrita</span>
-                            <h2 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
-                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Painel de Controle do Professor
-                            </h2>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie alunos, questões, simulados e o cronograma de estudos da turma.</p>
+                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Painel de Moderação Master</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Gestão de Alunos e Desempenho</h2>
                         </div>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="openAddQuestionModal()" class="bg-slate-900 hover:bg-slate-800 text-amber-400 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow border border-amber-500/30 flex items-center gap-1.5">
-                                <i class="fa-solid fa-plus-circle"></i> Nova Questão
-                            </button>
-                            <button onclick="openSimuladoModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
-                                <i class="fa-solid fa-sliders"></i> Gerar Simulado
-                            </button>
-                            <button onclick="openEditTabsModal()" class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-300 dark:border-slate-700">
-                                <i class="fa-solid fa-pen-to-square"></i> Rótulos
-                            </button>
-                        </div>
+                        <button onclick="openEditTabsModal()" class="bg-slate-900 dark:bg-slate-800 text-amber-400 text-xs px-3 py-1.5 rounded-lg font-bold border border-amber-500/30 shadow">
+                            <i class="fa-solid fa-gear"></i> Personalizar Rótulos das Abas
+                        </button>
                     </div>
 
-                    <!-- MÉTRICAS GERAIS DA PLATAFORMA -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Alunos Cadastrados</div>
-                                <div class="text-2xl font-black text-amber-500">${registeredStudents.length}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-users"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Banco de Questões</div>
-                                <div class="text-2xl font-black text-blue-500">${totalQuestionsCount}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-database"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Módulos Teóricos</div>
-                                <div class="text-2xl font-black text-emerald-500">${topicsData.length}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-book-bookmark"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SEÇÃO: VER E ALTERAR CRONOGRAMA DOS ALUNOS -->
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-5">
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <div>
-                                <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-                                    <i class="fa-solid fa-calendar-days text-amber-500"></i> Gerenciamento e Alteração de Cronograma dos Alunos
-                                </h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Selecione um aluno para visualizar, adicionar metas, alterar status ou ajustar prazos do cronograma individual.</p>
-                            </div>
-
-                            ${registeredStudents.length > 0 ? `
-                                <div class="flex items-center gap-2">
-                                    <label class="text-xs font-bold text-slate-600 dark:text-slate-300">Aluno:</label>
-                                    <select onchange="profSelectStudent(this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold px-3 py-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                                        ${registeredStudents.map(st => `
-                                            <option value="${st.name}" ${st.name === profSelectedStudentName ? 'selected' : ''}>${st.name} (${st.email})</option>
-                                        `).join('')}
-                                    </select>
-                                </div>
-                            ` : ''}
-                        </div>
-
-                        ${registeredStudents.length === 0 ? `
-                            <div class="p-8 text-center text-slate-400 text-xs">
-                                <i class="fa-solid fa-user-slash text-2xl mb-2 text-slate-300 block"></i>
-                                Nenhum aluno cadastrado na plataforma até o momento.
-                            </div>
-                        ` : `
-                            <div class="space-y-4">
-                                <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                    <div class="text-xs">
-                                        <span class="font-bold text-slate-700 dark:text-slate-200">Cronograma Atual:</span> 
-                                        <span class="text-amber-500 font-extrabold">${profSelectedStudentName}</span>
-                                    </div>
-                                    <div class="flex items-center gap-4 text-xs">
-                                        <span>Progresso: <b class="text-amber-500">${cronPct}%</b></span>
-                                        <span>Concluídos: <b class="text-emerald-500">${cronDone}/${cronTotal}</b></span>
-                                    </div>
-                                </div>
-
-                                <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900">
-                                    <table class="w-full text-left border-collapse text-xs">
-                                        <thead>
-                                            <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                                                <th class="p-3 font-bold uppercase tracking-wider text-center">Status</th>
-                                                <th class="p-3 font-bold uppercase tracking-wider">Fase</th>
-                                                <th class="p-3 font-bold uppercase tracking-wider">Tópico / Meta</th>
-                                                <th class="p-3 font-bold uppercase tracking-wider">Prioridade</th>
-                                                <th class="p-3 font-bold uppercase tracking-wider">Data Alvo</th>
-                                                <th class="p-3 font-bold uppercase tracking-wider">Anotações do Prof./Aluno</th>
-                                                <th class="p-3 font-bold uppercase tracking-wider text-right">Ação</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                                            ${currentStudentCron.map(item => {
-                                                const isDone = item.status === 'Concluído';
-                                                const isInProgress = item.status === 'Em Andamento';
-                                                return `
-                                                    <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition ${isDone ? 'bg-emerald-50/20 dark:bg-emerald-950/10' : ''}">
-                                                        <td class="p-2.5 text-center">
-                                                            <button onclick="profToggleCronStatus('${profSelectedStudentName}', '${item.id}')" class="px-2 py-1 rounded-lg text-[10px] font-black uppercase transition flex items-center gap-1 mx-auto ${isDone ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-blue-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-400 hover:text-slate-950'}" title="Clique para alternar status">
-                                                                <i class="fa-solid ${isDone ? 'fa-check-circle' : isInProgress ? 'fa-spinner fa-spin' : 'fa-circle'}"></i>
-                                                                ${item.status}
-                                                            </button>
-                                                        </td>
-                                                        <td class="p-2.5 font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">${item.semana}</td>
-                                                        <td class="p-2.5 font-semibold text-slate-800 dark:text-slate-200 ${isDone ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${item.title}</td>
-                                                        <td class="p-2.5">
-                                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.prioridade === 'Alta' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}">
-                                                                ${item.prioridade}
-                                                            </span>
-                                                        </td>
-                                                        <td class="p-2.5">
-                                                            <input type="date" value="${item.dataAlvo || ''}" onchange="profUpdateCronDate('${profSelectedStudentName}', '${item.id}', this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                                        </td>
-                                                        <td class="p-2.5">
-                                                            <input type="text" value="${item.notes || ''}" onchange="profUpdateCronNotes('${profSelectedStudentName}', '${item.id}', this.value)" placeholder="Anotação..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                                        </td>
-                                                        <td class="p-2.5 text-right whitespace-nowrap">
-                                                            <button onclick="profDeleteCronItem('${profSelectedStudentName}', '${item.id}')" class="text-red-400 hover:text-red-600 p-1" title="Excluir Meta do Aluno"><i class="fa-solid fa-trash text-xs"></i></button>
-                                                        </td>
-                                                    </tr>
-                                                `;
-                                            }).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- FORMULARIO PARA O PROFESSOR ADICIONAR NOVA META PARA O ALUNO SELECIONADO -->
-                                <div class="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                                    <h4 class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                        <i class="fa-solid fa-plus text-amber-500"></i> Atribuir Nova Meta / Tarefa para ${profSelectedStudentName}
-                                    </h4>
-                                    <form onsubmit="profAddCronItem(event, '${profSelectedStudentName}')" class="grid grid-cols-1 md:grid-cols-12 gap-2 text-xs">
-                                        <div class="md:col-span-4">
-                                            <input type="text" id="prof-cron-title" required placeholder="Título da Meta / Tarefa" class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <input type="text" id="prof-cron-semana" required placeholder="Fase (Ex: Semana 1)" class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <select id="prof-cron-prioridade" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                                <option value="Alta">Prioridade Alta</option>
-                                                <option value="Média" selected>Prioridade Média</option>
-                                                <option value="Baixa">Prioridade Baixa</option>
-                                            </select>
-                                        </div>
-                                        <div class="md:col-span-2">
-                                            <input type="date" id="prof-cron-date" class="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                        </div>
-                                        <div class="md:col-span-2 flex items-center">
-                                            <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-1.5 rounded-lg shadow transition">
-                                                Atribuir Meta
-                                            </button>
-                                        </div>
-                                        <div class="md:col-span-12">
-                                            <input type="text" id="prof-cron-notes" placeholder="Observações ou orientações específicas do professor..." class="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500">
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        `}
-                    </div>
-
-                    <!-- LISTA DE ALUNOS E DESEMPENHO ACADÊMICO -->
                     <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <i class="fa-solid fa-graduation-cap text-amber-500"></i> Alunos Registrados & Resumo
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-users text-amber-500"></i> Alunos Cadastrados na Plataforma (${registeredStudents.length})
                         </h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                                        <th class="p-3 font-bold uppercase tracking-wider">Nome do Aluno</th>
-                                        <th class="p-3 font-bold uppercase tracking-wider">E-mail</th>
-                                        <th class="p-3 font-bold uppercase tracking-wider">Função</th>
-                                        <th class="p-3 font-bold uppercase tracking-wider text-right">Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                                    ${registeredStudents.map(st => `
-                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                                            <td class="p-3 font-bold text-slate-800 dark:text-slate-200">${st.name}</td>
-                                            <td class="p-3 text-slate-500 dark:text-slate-400">${st.email}</td>
-                                            <td class="p-3"><span class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded">ALUNO</span></td>
-                                            <td class="p-3 text-right">
-                                                <button onclick="profSelectStudent('${st.name}')" class="bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500 hover:text-slate-950 px-2.5 py-1 rounded-md text-[11px] font-bold transition">
-                                                    Gerenciar Cronograma
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                        ${registeredStudents.length === 0 ? '<p class="text-xs text-slate-400">Nenhum aluno cadastrado até o momento.</p>' : ''}
+                        <div class="space-y-3">
+                            ${registeredStudents.map(st => `
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center p-3.5 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 gap-3">
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800 dark:text-slate-100">${st.name}</div>
+                                        <div class="text-[10px] text-slate-400">${st.email}</div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button onclick="openStudentPerformanceReport('${st.name}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1.5">
+                                            <i class="fa-solid fa-chart-pie"></i> Relatório de Alunos
+                                        </button>
+                                        <button onclick="openStudentCronogramaManager('${st.name}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-amber-400 text-xs font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1.5 border border-amber-500/30">
+                                            <i class="fa-solid fa-calendar-days"></i> Gerenciar Cronograma
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
+                    </div>
+                    <div id="professor-subview-container"></div>
+                </div>
+            `;
+        }
+
+        function openStudentPerformanceReport(name) {
+            profSelectedStudentName = name;
+            const studentPerf = multiStudentPerf[name] || {};
+            let totalAcertos = 0;
+            let totalErros = 0;
+            topicsData.forEach(t => {
+                const stat = studentPerf[t.id] || { acertos: 0, erros: 0 };
+                totalAcertos += stat.acertos;
+                totalErros += stat.erros;
+            });
+            const total = totalAcertos + totalErros;
+            const pct = total > 0 ? Math.round((totalAcertos / total) * 100) : 0;
+
+            const container = document.getElementById('professor-subview-container');
+            container.innerHTML = `
+                <div class="border border-amber-500/30 rounded-2xl p-5 bg-amber-500/5 space-y-4 mt-4">
+                    <div class="flex justify-between items-center border-b border-amber-500/20 pb-3">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-amber-500"></i> Relatório de Rendimento: <span class="text-amber-600 dark:text-amber-400">${name}</span>
+                        </h3>
+                        <button onclick="document.getElementById('professor-subview-container').innerHTML=''" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Total Respondidas</div>
+                            <div class="text-lg font-black text-slate-800 dark:text-slate-100">${total}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Acertos</div>
+                            <div class="text-lg font-black text-emerald-500">${totalAcertos}</div>
+                        </div>
+                        <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Taxa de Acerto</div>
+                            <div class="text-lg font-black text-amber-500">${pct}%</div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">Desempenho por Tópico</h4>
+                        ${topicsData.map(t => {
+                            const st = studentPerf[t.id] || { acertos: 0, erros: 0 };
+                            const tTot = st.acertos + st.erros;
+                            const tPct = tTot > 0 ? Math.round((st.acertos / tTot) * 100) : 0;
+                            return `
+                                <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs">
+                                    <span class="font-semibold text-slate-800 dark:text-slate-200">${t.title}</span>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">Acertos: ${st.acertos}</span>
+                                        <span class="text-red-500 font-bold">Erros: ${st.erros}</span>
+                                        <span class="bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded font-black">${tPct}%</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
+        }
+
+        function openStudentCronogramaManager(name) {
+            profSelectedStudentName = name;
+            const cronData = getStudentCronogramaByName(name);
+            const container = document.getElementById('professor-subview-container');
+            container.innerHTML = `
+                <div class="border border-amber-500/30 rounded-2xl p-5 bg-amber-500/5 space-y-4 mt-4">
+                    <div class="flex justify-between items-center border-b border-amber-500/20 pb-3">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-amber-500"></i> Gerenciamento de Cronograma: <span class="text-amber-600 dark:text-amber-400">${name}</span>
+                        </h3>
+                        <button onclick="document.getElementById('professor-subview-container').innerHTML=''" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+                    <div class="overflow-x-auto bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                    <th class="p-2.5 font-bold">Status</th>
+                                    <th class="p-2.5 font-bold">Fase</th>
+                                    <th class="p-2.5 font-bold">Tópico</th>
+                                    <th class="p-2.5 font-bold">Prioridade</th>
+                                    <th class="p-2.5 font-bold">Nota / Instrução</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                ${cronData.map(item => `
+                                    <tr>
+                                        <td class="p-2.5 font-bold text-amber-600">${item.status}</td>
+                                        <td class="p-2.5">${item.semana}</td>
+                                        <td class="p-2.5 font-semibold">${item.title}</td>
+                                        <td class="p-2.5">${item.prioridade}</td>
+                                        <td class="p-2.5">
+                                            <input type="text" value="${item.notes || ''}" onchange="updateStudentCronNotes('${name}', '${item.id}', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none">
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateStudentCronNotes(name, id, val) {
+            let cronData = getStudentCronogramaByName(name);
+            const item = cronData.find(i => i.id === id);
+            if (item) {
+                item.notes = val;
+                saveStudentCronogramaByName(name, cronData);
+            }
         }
     </script>
 </body>
