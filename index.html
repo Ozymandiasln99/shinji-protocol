@@ -580,7 +580,7 @@
                     id: `${tId}_q${i}`,
                     topicId: tId,
                     difficulty: diff,
-                    statement: `[Questão ${i}] Questão prática de nível ${diff} para o subtópico ${titleName}. Resolva e assinale a alternativa correta.`,
+                    statement: `[Questão ${i}] Questão prática para o subtópico ${titleName}. Resolva e assinale a alternativa correta.`,
                     options: [`Alternativa A (Correta)`, `Alternativa B`, `Alternativa C`, `Alternativa D`, `Alternativa E`],
                     correct: 0,
                     explanation: `A alternativa A é a correta pois atende diretamente aos axiomas teóricos e às regras de cálculo do tópico ${titleName}.`
@@ -1014,7 +1014,6 @@
                                     <div class="flex justify-between items-center">
                                         <div class="flex items-center gap-2">
                                             <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1}</span>
-                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded ${getDifficultyBadge(q.difficulty)}">${q.difficulty}</span>
                                         </div>
                                         ${currentUser.role === 'admin' ? `
                                             <div class="flex gap-2">
@@ -1391,6 +1390,7 @@
             const correct = parseInt(document.getElementById('q-edit-correct').value);
             const explanation = document.getElementById('q-edit-explanation').value.trim();
 
+            const isNew = !qId;
             const questionData = {
                 id: qId || `${targetTopicId}_q_${Date.now()}`,
                 topicId: targetTopicId,
@@ -1401,12 +1401,25 @@
                 explanation: explanation
             };
 
-            if (qId && originalTopicId && masterQuestions[originalTopicId]) {
-                masterQuestions[originalTopicId] = masterQuestions[originalTopicId].filter(q => q.id !== qId);
-            }
-
             if (!masterQuestions[targetTopicId]) masterQuestions[targetTopicId] = [];
-            masterQuestions[targetTopicId].push(questionData);
+
+            if (isNew) {
+                masterQuestions[targetTopicId].push(questionData);
+            } else {
+                if (originalTopicId === targetTopicId) {
+                    const index = masterQuestions[targetTopicId].findIndex(q => q.id === qId);
+                    if (index !== -1) {
+                        masterQuestions[targetTopicId][index] = questionData;
+                    } else {
+                        masterQuestions[targetTopicId].push(questionData);
+                    }
+                } else {
+                    if (originalTopicId && masterQuestions[originalTopicId]) {
+                        masterQuestions[originalTopicId] = masterQuestions[originalTopicId].filter(q => q.id !== qId);
+                    }
+                    masterQuestions[targetTopicId].push(questionData);
+                }
+            }
 
             localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
             closeEditQuestionModal();
@@ -1577,7 +1590,6 @@
                             <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
                                 <div class="flex items-center gap-2">
                                     <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1}</span>
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${getDifficultyBadge(q.difficulty)}">${q.difficulty}</span>
                                 </div>
                                 <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
                                 <div class="space-y-2 pl-1">
@@ -1603,81 +1615,77 @@
 
         function renderPerformanceView(main) {
             const uName = currentUser.name || 'Visitante';
-            const perf = multiStudentPerf[uName] || {};
-            
+            const userPerf = multiStudentPerf[uName] || {};
             let totalAcertos = 0;
             let totalErros = 0;
 
             topicsData.forEach(t => {
-                if (perf[t.id]) {
-                    totalAcertos += perf[t.id].acertos || 0;
-                    totalErros += perf[t.id].erros || 0;
+                if (userPerf[t.id]) {
+                    totalAcertos += userPerf[t.id].acertos || 0;
+                    totalErros += userPerf[t.id].erros || 0;
                 }
             });
 
             const totalRespondidas = totalAcertos + totalErros;
-            const pctGeral = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
+            const taxaAcerto = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
 
             main.innerHTML = `
                 <div class="space-y-6">
-                    <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
-                        <div>
-                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório Individual</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
-                                <i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho Pessoal de ${uName}
-                            </h2>
-                        </div>
+                    <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+                        <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório de Aprendizagem</span>
+                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho do Aluno
+                        </h2>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Respondidas</div>
-                                <div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-list-check"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
                                 <div class="text-[10px] font-bold uppercase text-slate-400">Taxa de Acertos</div>
-                                <div class="text-2xl font-black text-emerald-500">${pctGeral}%</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-bullseye"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Acertos / Erros</div>
-                                <div class="text-2xl font-black text-slate-800 dark:text-slate-100"><span class="text-emerald-500">${totalAcertos}</span> / <span class="text-red-500">${totalErros}</span></div>
+                                <div class="text-2xl font-black text-amber-500">${taxaAcerto}%</div>
                             </div>
                             <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-scale-balanced"></i>
+                                <i class="fa-solid fa-percent"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Total de Acertos</div>
+                                <div class="text-2xl font-black text-emerald-500">${totalAcertos}</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-check text-emerald-500"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Total de Erros</div>
+                                <div class="text-2xl font-black text-red-500">${totalErros}</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-xmark text-red-500"></i>
                             </div>
                         </div>
                     </div>
 
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <i class="fa-solid fa-layer-group text-amber-500"></i> Desempenho Detalhado por Subtópico
-                        </h3>
-                        <div class="space-y-3">
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm p-4">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-3">Detalhamento por Subtópico</h3>
+                        <div class="space-y-3 text-xs">
                             ${topicsData.map(t => {
-                                const tPerf = perf[t.id] || { acertos: 0, erros: 0 };
-                                const tTot = tPerf.acertos + tPerf.erros;
-                                const tPct = tTot > 0 ? Math.round((tPerf.acertos / tTot) * 100) : 0;
+                                const ac = userPerf[t.id] ? userPerf[t.id].acertos || 0 : 0;
+                                const er = userPerf[t.id] ? userPerf[t.id].erros || 0 : 0;
+                                const tot = ac + er;
+                                const pct = tot > 0 ? Math.round((ac / tot) * 100) : 0;
                                 return `
-                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl space-y-2">
-                                        <div class="flex justify-between items-center text-xs">
-                                            <span class="font-bold text-slate-800 dark:text-slate-200">${t.title}</span>
-                                            <span class="font-bold text-slate-600 dark:text-slate-400">${tPerf.acertos} acertos / ${tPerf.erros} erros (${tPct}%)</span>
+                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
+                                        <div class="flex justify-between font-semibold">
+                                            <span>${t.title}</span>
+                                            <span>${ac} acertos / ${er} erros (${pct}%)</span>
                                         </div>
                                         <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                            <div class="bg-amber-500 h-full transition-all" style="width: ${tPct}%"></div>
+                                            <div class="bg-amber-500 h-full" style="width: ${pct}%"></div>
                                         </div>
                                     </div>
                                 `;
@@ -1688,160 +1696,41 @@
             `;
         }
 
-        // PAINEL DO PROFESSOR COM RELATÓRIO DE PROGRESSÃO DOS ALUNOS
         function renderProfessorDashboard(main) {
-            let totalAlunos = registeredStudents.length;
-            let totalRespostasGlobais = 0;
-            let totalAcertosGlobais = 0;
-
-            registeredStudents.forEach(st => {
-                const stPerf = multiStudentPerf[st.name] || {};
-                Object.values(stPerf).forEach(p => {
-                    totalAcertosGlobais += p.acertos || 0;
-                    totalRespostasGlobais += (p.acertos || 0) + (p.erros || 0);
-                });
-            });
-
-            const pctGlobal = totalRespostasGlobais > 0 ? Math.round((totalAcertosGlobais / totalRespostasGlobais) * 100) : 0;
-
             main.innerHTML = `
                 <div class="space-y-6">
-                    <!-- CABEÇALHO DO PAINEL DO PROFESSOR -->
-                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
+                    <div class="border-b border-slate-200 dark:border-slate-800 pb-4 flex justify-between items-center">
                         <div>
-                            <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Gestão Pedagógica</span>
+                            <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">Painel Administrativo</span>
                             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
-                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Painel de Moderação & Controle do Professor
+                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Gerenciamento do Professor
                             </h2>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Acompanhe o rendimento dos alunos cadastrados, gerencie bancos de questões e edite a plataforma.</p>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button onclick="openAddQuestionModal()" class="bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-2 border border-amber-500/30">
-                                <i class="fa-solid fa-plus-circle"></i> Nova Questão
-                            </button>
-                            <button onclick="openSimuladoModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-2">
-                                <i class="fa-solid fa-file-pen"></i> Criar Simulado
-                            </button>
-                            <button onclick="openEditTabsModal()" class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-2 border border-slate-300 dark:border-slate-700">
-                                <i class="fa-solid fa-pen-to-square"></i> Rótulos das Abas
-                            </button>
-                        </div>
+                        <button onclick="openEditTabsModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 border border-amber-500/30">
+                            <i class="fa-solid fa-pen-to-square"></i> Editar Rótulos das Abas
+                        </button>
                     </div>
 
-                    <!-- CARDS DE METRICAS GERAIS -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Alunos Cadastrados</div>
-                                <div class="text-2xl font-black text-amber-500">${totalAlunos}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-users"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Aproveitamento Médio Turma</div>
-                                <div class="text-2xl font-black text-emerald-500">${pctGlobal}%</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-graduation-cap"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Questões Respondidas (Total)</div>
-                                <div class="text-2xl font-black text-blue-500">${totalRespostasGlobais}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-clipboard-check"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- RELATÓRIO DE PROGRESSÃO DOS ALUNOS -->
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-                                <i class="fa-solid fa-chart-user text-amber-500"></i> Relatório de Acompanhamento e Progressão dos Alunos
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm space-y-3">
+                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-plus-circle text-amber-500"></i> Gestão de Questões
                             </h3>
-                            <span class="text-xs text-slate-400 font-medium">Monitoramento individual e por módulo</span>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Adicione ou edite questões diretamente no banco de dados.</p>
+                            <button onclick="openAddQuestionModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-2 px-3 rounded-xl transition shadow">
+                                Cadastrar Nova Questão
+                            </button>
                         </div>
 
-                        ${totalAlunos === 0 ? `
-                            <div class="text-center py-8 text-xs text-slate-400">
-                                <i class="fa-solid fa-user-slash text-2xl mb-2 text-slate-300 dark:text-slate-600 block"></i>
-                                Nenhum aluno cadastrado na plataforma até o momento.
-                            </div>
-                        ` : `
-                            <div class="space-y-4">
-                                ${registeredStudents.map(st => {
-                                    const stPerf = multiStudentPerf[st.name] || {};
-                                    let stAcertos = 0;
-                                    let stErros = 0;
-
-                                    topicsData.forEach(t => {
-                                        if (stPerf[t.id]) {
-                                            stAcertos += stPerf[t.id].acertos || 0;
-                                            stErros += stPerf[t.id].erros || 0;
-                                        }
-                                    });
-
-                                    const stTotal = stAcertos + stErros;
-                                    const stPct = stTotal > 0 ? Math.round((stAcertos / stTotal) * 100) : 0;
-
-                                    return `
-                                        <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
-                                            <div class="flex flex-wrap justify-between items-center gap-2">
-                                                <div class="flex items-center gap-3">
-                                                    <div class="w-9 h-9 rounded-full bg-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-sm">
-                                                        ${st.name.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${st.name}</h4>
-                                                        <p class="text-[11px] text-slate-400">${st.email}</p>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center gap-4 text-xs font-semibold">
-                                                    <div><span class="text-slate-400">Respondidas:</span> <span class="text-slate-800 dark:text-slate-200 font-bold">${stTotal}</span></div>
-                                                    <div><span class="text-slate-400">Acertos/Erros:</span> <span class="text-emerald-500 font-bold">${stAcertos}</span> / <span class="text-red-500 font-bold">${stErros}</span></div>
-                                                    <div><span class="text-slate-400">Taxa:</span> <span class="text-amber-500 font-black">${stPct}%</span></div>
-                                                </div>
-                                            </div>
-
-                                            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                                                <div class="bg-amber-500 h-full transition-all" style="width: ${stPct}%"></div>
-                                            </div>
-
-                                            <details class="text-xs group">
-                                                <summary class="cursor-pointer font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1">
-                                                    <span>Ver detalhamento por subtópico</span>
-                                                    <i class="fa-solid fa-chevron-down text-[10px] group-open:rotate-180 transition-transform"></i>
-                                                </summary>
-                                                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60">
-                                                    ${topicsData.map(t => {
-                                                        const tp = stPerf[t.id] || { acertos: 0, erros: 0 };
-                                                        const tpTot = tp.acertos + tp.erros;
-                                                        const tpPct = tpTot > 0 ? Math.round((tp.acertos / tpTot) * 100) : 0;
-                                                        return `
-                                                            <div class="p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]">
-                                                                <div class="font-bold text-slate-700 dark:text-slate-300 truncate" title="${t.title}">${t.title}</div>
-                                                                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400 mt-1">
-                                                                    <span>${tp.acertos}A / ${tp.erros}E</span>
-                                                                    <span class="font-bold text-amber-500">${tpPct}%</span>
-                                                                </div>
-                                                            </div>
-                                                        `;
-                                                    }).join('')}
-                                                </div>
-                                            </details>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        `}
+                        <div class="p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm space-y-3">
+                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-sliders text-amber-500"></i> Criar Simulado
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Gere cadernos de simulado por subtópicos do edital.</p>
+                            <button onclick="openSimuladoModal()" class="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-amber-400 font-bold text-xs py-2 px-3 rounded-xl transition shadow border border-amber-500/30">
+                                Abrir Gerador de Simulado
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
