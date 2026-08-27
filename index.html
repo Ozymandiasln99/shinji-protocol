@@ -1615,121 +1615,229 @@
 
         function renderPerformanceView(main) {
             const uName = currentUser.name || 'Visitante';
-            const userPerf = multiStudentPerf[uName] || {};
+            const perf = multiStudentPerf[uName] || {};
+
             let totalAcertos = 0;
             let totalErros = 0;
 
-            topicsData.forEach(t => {
-                if (userPerf[t.id]) {
-                    totalAcertos += userPerf[t.id].acertos || 0;
-                    totalErros += userPerf[t.id].erros || 0;
-                }
-            });
+            const rows = topicsData.map(t => {
+                const stData = perf[t.id] || { acertos: 0, erros: 0 };
+                totalAcertos += stData.acertos;
+                totalErros += stData.erros;
+                const tot = stData.acertos + stData.erros;
+                const pct = tot > 0 ? Math.round((stData.acertos / tot) * 100) : 0;
 
-            const totalRespondidas = totalAcertos + totalErros;
-            const taxaAcerto = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
+                return `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                        <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">${t.title}</td>
+                        <td class="p-3 text-center text-emerald-600 font-bold">${stData.acertos}</td>
+                        <td class="p-3 text-center text-red-500 font-bold">${stData.erros}</td>
+                        <td class="p-3 text-center font-black ${pct >= 70 ? 'text-emerald-500' : pct >= 50 ? 'text-amber-500' : 'text-red-500'}">${pct}%</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const grandTotal = totalAcertos + totalErros;
+            const grandPct = grandTotal > 0 ? Math.round((totalAcertos / grandTotal) * 100) : 0;
 
             main.innerHTML = `
                 <div class="space-y-6">
                     <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
-                        <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório de Aprendizagem</span>
+                        <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório Individual</span>
                         <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
-                            <i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho do Aluno
+                            <i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho de ${uName}
                         </h2>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Taxa de Acertos</div>
-                                <div class="text-2xl font-black text-amber-500">${taxaAcerto}%</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-percent"></i>
-                            </div>
-                        </div>
-
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
                                 <div class="text-[10px] font-bold uppercase text-slate-400">Total de Acertos</div>
                                 <div class="text-2xl font-black text-emerald-500">${totalAcertos}</div>
                             </div>
                             <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-check text-emerald-500"></i>
+                                <i class="fa-solid fa-circle-check"></i>
                             </div>
                         </div>
-
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
                                 <div class="text-[10px] font-bold uppercase text-slate-400">Total de Erros</div>
                                 <div class="text-2xl font-black text-red-500">${totalErros}</div>
                             </div>
                             <div class="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-xmark text-red-500"></i>
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </div>
+                        </div>
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Aproveitamento Geral</div>
+                                <div class="text-2xl font-black text-amber-500">${grandPct}%</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-percent"></i>
                             </div>
                         </div>
                     </div>
 
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm p-4">
-                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-3">Detalhamento por Subtópico</h3>
-                        <div class="space-y-3 text-xs">
-                            ${topicsData.map(t => {
-                                const ac = userPerf[t.id] ? userPerf[t.id].acertos || 0 : 0;
-                                const er = userPerf[t.id] ? userPerf[t.id].erros || 0 : 0;
-                                const tot = ac + er;
-                                const pct = tot > 0 ? Math.round((ac / tot) * 100) : 0;
-                                return `
-                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl space-y-1">
-                                        <div class="flex justify-between font-semibold">
-                                            <span>${t.title}</span>
-                                            <span>${ac} acertos / ${er} erros (${pct}%)</span>
-                                        </div>
-                                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                            <div class="bg-amber-500 h-full" style="width: ${pct}%"></div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-bold uppercase text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                                    <th class="p-3">Módulo / Tópico</th>
+                                    <th class="p-3 text-center text-emerald-600">Acertos</th>
+                                    <th class="p-3 text-center text-red-500">Erros</th>
+                                    <th class="p-3 text-center">Aproveitamento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
         }
 
+        function saveSheetsLink(e) {
+            if (e) e.preventDefault();
+            const input = document.getElementById('prof-sheets-url');
+            if (input) {
+                sheetsLink = input.value.trim();
+                localStorage.setItem('ctrb_sheets_link', sheetsLink);
+                alert('Link da planilha atualizado com sucesso!');
+            }
+        }
+
+        function deleteStudentPerf(studentName) {
+            if (confirm(`Deseja realmente excluir o relatório de desempenho do aluno "${studentName}"?`)) {
+                if (multiStudentPerf[studentName]) {
+                    delete multiStudentPerf[studentName];
+                    localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+                    renderMainContent();
+                }
+            }
+        }
+
+        function resetAllStudentPerf() {
+            if (confirm('Deseja zerar/excluir o relatório de TODOS os alunos?')) {
+                multiStudentPerf = {};
+                localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+                syncStudentProgression();
+                renderMainContent();
+            }
+        }
+
         function renderProfessorDashboard(main) {
+            const studentNames = Object.keys(multiStudentPerf);
+            let studentsHtml = '';
+
+            if (studentNames.length === 0) {
+                studentsHtml = '<p class="text-xs text-slate-400 p-4 border border-dashed border-slate-300 dark:border-slate-800 rounded-xl text-center">Nenhum relatório de aluno disponível no momento.</p>';
+            } else {
+                studentsHtml = studentNames.map(name => {
+                    const perf = multiStudentPerf[name] || {};
+                    let totalAcertos = 0;
+                    let totalErros = 0;
+
+                    const topicRows = topicsData.map(t => {
+                        const stData = perf[t.id] || { acertos: 0, erros: 0 };
+                        totalAcertos += stData.acertos;
+                        totalErros += stData.erros;
+                        const tot = stData.acertos + stData.erros;
+                        const pct = tot > 0 ? Math.round((stData.acertos / tot) * 100) : 0;
+                        return `
+                            <tr class="border-b border-slate-100 dark:border-slate-800 text-xs hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td class="p-2.5 font-medium text-slate-700 dark:text-slate-300">${t.title}</td>
+                                <td class="p-2.5 text-center text-emerald-600 font-bold">${stData.acertos}</td>
+                                <td class="p-2.5 text-center text-red-500 font-bold">${stData.erros}</td>
+                                <td class="p-2.5 text-center font-black ${pct >= 70 ? 'text-emerald-500' : pct >= 50 ? 'text-amber-500' : 'text-red-500'}">${pct}%</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    const grandTotal = totalAcertos + totalErros;
+                    const grandPct = grandTotal > 0 ? Math.round((totalAcertos / grandTotal) * 100) : 0;
+
+                    return `
+                        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 bg-white dark:bg-slate-900 shadow-sm space-y-3">
+                            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3 flex-wrap gap-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center font-bold">
+                                        <i class="fa-solid fa-user-graduate"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${name}</h4>
+                                        <span class="text-[11px] text-slate-400">Total: ${totalAcertos} acerto(s) | ${totalErros} erro(s) (${grandPct}% de aproveitamento)</span>
+                                    </div>
+                                </div>
+                                <button onclick="deleteStudentPerf('${name}')" class="text-xs text-red-500 hover:text-red-700 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-trash"></i> Excluir Relatório
+                                </button>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 dark:bg-slate-800 text-[10px] font-bold uppercase text-slate-500">
+                                            <th class="p-2">Tópico do Edital</th>
+                                            <th class="p-2 text-center text-emerald-600">Acertos</th>
+                                            <th class="p-2 text-center text-red-500">Erros</th>
+                                            <th class="p-2 text-center">Aproveitamento</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${topicRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
             main.innerHTML = `
                 <div class="space-y-6">
-                    <div class="border-b border-slate-200 dark:border-slate-800 pb-4 flex justify-between items-center">
+                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
                         <div>
-                            <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">Painel Administrativo</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
-                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Gerenciamento do Professor
+                            <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded uppercase tracking-wider">Moderação Master</span>
+                            <h2 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
+                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Painel do Professor
                             </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Gerencie o link da planilha, edite rótulos das abas e acompanhe/exclua o desempenho dos alunos.</p>
                         </div>
-                        <button onclick="openEditTabsModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 border border-amber-500/30">
-                            <i class="fa-solid fa-pen-to-square"></i> Editar Rótulos das Abas
-                        </button>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="openEditTabsModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs px-3.5 py-2 rounded-xl font-bold transition border border-amber-500/30 flex items-center gap-1.5">
+                                <i class="fa-solid fa-pen-to-square"></i> Editar Rótulos das Abas
+                            </button>
+                            <button onclick="resetAllStudentPerf()" class="bg-red-500 hover:bg-red-600 text-white text-xs px-3.5 py-2 rounded-xl font-bold transition shadow flex items-center gap-1.5">
+                                <i class="fa-solid fa-trash-can"></i> Limpar Todos os Relatórios
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm space-y-3">
-                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                <i class="fa-solid fa-plus-circle text-amber-500"></i> Gestão de Questões
-                            </h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Adicione ou edite questões diretamente no banco de dados.</p>
-                            <button onclick="openAddQuestionModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs py-2 px-3 rounded-xl transition shadow">
-                                Cadastrar Nova Questão
+                    <!-- GESTÃO DA PLANILHA -->
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-3">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
+                            <i class="fa-solid fa-table text-emerald-500"></i> Link da Planilha Google (Sheets)
+                        </h3>
+                        <form onsubmit="saveSheetsLink(event)" class="flex flex-col sm:flex-row gap-2">
+                            <input type="url" id="prof-sheets-url" value="${sheetsLink}" required placeholder="https://docs.google.com/spreadsheets/d/..." class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition shadow whitespace-nowrap">
+                                <i class="fa-solid fa-floppy-disk mr-1"></i> Salvar Link
                             </button>
-                        </div>
+                            <a href="${sheetsLink}" target="_blank" rel="noopener noreferrer" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-amber-400 font-bold px-4 py-2 rounded-xl text-xs transition shadow border border-amber-500/30 flex items-center justify-center gap-1 whitespace-nowrap">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Planilha
+                            </a>
+                        </form>
+                    </div>
 
-                        <div class="p-5 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm space-y-3">
-                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                                <i class="fa-solid fa-sliders text-amber-500"></i> Criar Simulado
-                            </h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400">Gere cadernos de simulado por subtópicos do edital.</p>
-                            <button onclick="openSimuladoModal()" class="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-amber-400 font-bold text-xs py-2 px-3 rounded-xl transition shadow border border-amber-500/30">
-                                Abrir Gerador de Simulado
-                            </button>
+                    <!-- RELATÓRIO DE DESEMPENHO DOS ALUNOS -->
+                    <div class="space-y-4">
+                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-amber-500"></i> Relatórios de Desempenho dos Alunos por Tópico
+                        </h3>
+                        <div class="space-y-4">
+                            ${studentsHtml}
                         </div>
                     </div>
                 </div>
