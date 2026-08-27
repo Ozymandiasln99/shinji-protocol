@@ -418,25 +418,36 @@
         let currentSimulado = null;
         let quillTopicEditor = null;
 
+        // FUNÇÃO CORRIGIDA PARA SUPORTAR PLAYLISTS E VÍDEOS INDIVIDUAIS
         function getYoutubeEmbedUrl(input) {
             if (!input) return '';
             const str = input.trim();
-            if (str.includes('list=')) {
-                const listId = str.split('list=')[1].split('&')[0];
-                return `https://www.youtube.com/embed/videoseries?list=${listId}`;
+            
+            // 1. Procura por ID de Playlist no parâmetro "list=" em qualquer tipo de URL ou string
+            const listMatch = str.match(/[?&]list=([^&?#]+)/);
+            if (listMatch && listMatch[1]) {
+                return `https://www.youtube.com/embed/videoseries?list=${listMatch[1]}`;
             }
+
+            // 2. Se for passado o ID direto da playlist (começando com PL ou OLAK5uy_)
             if (str.startsWith('PL') || str.startsWith('OLAK5uy_')) {
-                return `https://www.youtube.com/embed/videoseries?list=${str}`;
+                const cleanListId = str.split(/[?&#]/)[0];
+                return `https://www.youtube.com/embed/videoseries?list=${cleanListId}`;
             }
+
+            // 3. Links de vídeos individuais (watch?v=, youtu.be/, embed/ ou ID direto)
+            let videoId = '';
             if (str.includes('watch?v=')) {
-                const videoId = str.split('v=')[1].split('&')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
+                videoId = str.split('v=')[1].split(/[&?#]/)[0];
+            } else if (str.includes('youtu.be/')) {
+                videoId = str.split('youtu.be/')[1].split(/[&?#]/)[0];
+            } else if (str.includes('embed/')) {
+                videoId = str.split('embed/')[1].split(/[&?#]/)[0];
+            } else {
+                videoId = str.split(/[&?#]/)[0];
             }
-            if (str.includes('youtu.be/')) {
-                const videoId = str.split('youtu.be/')[1].split('?')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
-            }
-            return `https://www.youtube.com/embed/${str}`;
+
+            return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
         }
 
         let multiStudentPerf = JSON.parse(localStorage.getItem('ctrb_multi_perf')) || {};
@@ -1045,6 +1056,19 @@
             if (window.MathJax) MathJax.typesetPromise();
         }
 
+        function adjustPerformance(topicId, type, qty) {
+            const uName = currentUser.name || 'Visitante';
+            if (!multiStudentPerf[uName]) multiStudentPerf[uName] = {};
+            if (!multiStudentPerf[uName][topicId]) multiStudentPerf[uName][topicId] = { acertos: 0, erros: 0 };
+
+            if (type === 'acerto') {
+                multiStudentPerf[uName][topicId].acertos += qty;
+            } else {
+                multiStudentPerf[uName][topicId].erros += qty;
+            }
+            localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+        }
+
         function openAddQuestionModal(topicId) {
             document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-plus-circle text-amber-500"></i> Adicionar Nova Questão';
             document.getElementById('q-edit-id').value = '';
@@ -1141,6 +1165,120 @@
             }
         }
 
+        function openEditTopicModal(topicId) {
+            const t = topicsData.find(item => item.id === topicId);
+            if (!t) return;
+            document.getElementById('edit-topic-id').value = t.id;
+            document.getElementById('edit-topic-title').value = t.title;
+            document.getElementById('edit-topic-yt').value = t.ytVideoId || '';
+            if (quillTopicEditor) {
+                quillTopicEditor.root.innerHTML = t.theory || '';
+            }
+            document.getElementById('edit-topic-modal').classList.remove('hidden');
+        }
+
+        function closeEditTopicModal() {
+            document.getElementById('edit-topic-modal').classList.add('hidden');
+        }
+
+        function saveTopicChanges(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-topic-id').value;
+            const title = document.getElementById('edit-topic-title').value.trim();
+            const yt = document.getElementById('edit-topic-yt').value.trim();
+            const content = quillTopicEditor ? quillTopicEditor.root.innerHTML : '';
+
+            const idx = topicsData.findIndex(item => item.id === id);
+            if (idx !== -1) {
+                topicsData[idx].title = title;
+                topicsData[idx].ytVideoId = yt;
+                topicsData[idx].theory = content;
+                localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
+            }
+
+            closeEditTopicModal();
+            renderSidebarNav();
+            renderMainContent();
+            alert('Módulo atualizado com sucesso!');
+        }
+
+        function openEditTabsModal() {
+            document.getElementById('tab-label-edital').value = tabLabels.edital;
+            document.getElementById('tab-label-teoria').value = tabLabels.teoria;
+            document.getElementById('tab-label-questoes').value = tabLabels.questoes;
+            document.getElementById('tab-label-simulados').value = tabLabels.simulados;
+            document.getElementById('tab-label-desempenho').value = tabLabels.desempenho;
+            document.getElementById('edit-tabs-modal').classList.remove('hidden');
+        }
+
+        function closeEditTabsModal() {
+            document.getElementById('edit-tabs-modal').classList.add('hidden');
+        }
+
+        function saveCustomTabs(e) {
+            e.preventDefault();
+            tabLabels.edital = document.getElementById('tab-label-edital').value.trim();
+            tabLabels.teoria = document.getElementById('tab-label-teoria').value.trim();
+            tabLabels.questoes = document.getElementById('tab-label-questoes').value.trim();
+            tabLabels.simulados = document.getElementById('tab-label-simulados').value.trim();
+            tabLabels.desempenho = document.getElementById('tab-label-desempenho').value.trim();
+
+            localStorage.setItem('ctrb_tab_labels', JSON.stringify(tabLabels));
+            closeEditTabsModal();
+            updateUserUI();
+            alert('Rótulos de navegação atualizados com sucesso!');
+        }
+
+        function openSimuladoModal() {
+            const container = document.getElementById('sim-topics-checkboxes');
+            container.innerHTML = topicsData.map(t => `
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" value="${t.id}" checked class="sim-topic-chk text-amber-500 rounded focus:ring-amber-400">
+                    <span>${t.title}</span>
+                </label>
+            `).join('');
+            document.getElementById('simulado-modal').classList.remove('hidden');
+        }
+
+        function closeSimuladoModal() {
+            document.getElementById('simulado-modal').classList.add('hidden');
+        }
+
+        function generateSimulado(e) {
+            e.preventDefault();
+            const title = document.getElementById('sim-title').value.trim();
+            const qty = parseInt(document.getElementById('sim-qty').value);
+            const checkboxes = document.querySelectorAll('.sim-topic-chk:checked');
+            const selectedTopicIds = Array.from(checkboxes).map(c => c.value);
+
+            if (selectedTopicIds.length === 0) {
+                alert('Selecione pelo menos um subtópico para o simulado.');
+                return;
+            }
+
+            let pool = [];
+            selectedTopicIds.forEach(id => {
+                if (masterQuestions[id]) pool = pool.concat(masterQuestions[id]);
+            });
+
+            if (pool.length === 0) {
+                alert('Não há questões cadastradas nos subtópicos selecionados.');
+                return;
+            }
+
+            // Embaralha as questões
+            pool.sort(() => 0.5 - Math.random());
+            const selectedQuestions = pool.slice(0, Math.min(qty, pool.length));
+
+            currentSimulado = {
+                title: title,
+                questions: selectedQuestions
+            };
+
+            closeSimuladoModal();
+            switchMainTab('simulados');
+        }
+
         function renderSimuladoView(main) {
             if (!currentSimulado) {
                 main.innerHTML = `
@@ -1200,13 +1338,7 @@
         }
 
         function renderPerformanceView(main) {
-            let userPerfData = {};
-
-            if (currentUser.role === 'aluno' && currentUser.name) {
-                userPerfData = multiStudentPerf[currentUser.name] || {};
-            } else {
-                userPerfData = multiStudentPerf[currentUser.name] || {};
-            }
+            let userPerfData = multiStudentPerf[currentUser.name] || {};
 
             let totalAcertos = 0;
             let totalErros = 0;
@@ -1512,197 +1644,62 @@
             return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
         }
 
-        function adjustPerformance(topicId, type, amount) {
-            const name = currentUser.name || 'Visitante';
-            if (!multiStudentPerf[name]) multiStudentPerf[name] = {};
-            if (!multiStudentPerf[name][topicId]) multiStudentPerf[name][topicId] = { acertos: 0, erros: 0 };
-            
-            if (type === 'acerto') {
-                multiStudentPerf[name][topicId].acertos += amount;
-            } else {
-                multiStudentPerf[name][topicId].erros += amount;
-            }
-            localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
-            if (currentMainTab === 'desempenho' || currentMainTab === 'professor') {
-                renderMainContent();
-            }
-        }
-
         function saveSheetsLink(e) {
             e.preventDefault();
-            sheetsLink = document.getElementById('prof-sheets-url').value.trim();
+            const url = document.getElementById('prof-sheets-url').value.trim();
+            sheetsLink = url;
             localStorage.setItem('ctrb_sheets_link', sheetsLink);
             alert('Link da planilha atualizado!');
-            renderMainContent();
         }
 
-        function deleteStudentReport(studentName) {
-            if (confirm(`Deseja realmente excluir o relatório do aluno ${studentName}?`)) {
-                delete multiStudentPerf[studentName];
-                registeredStudents = registeredStudents.filter(s => s.name !== studentName);
+        function deleteStudentReport(name) {
+            if (confirm(`Deseja realmente excluir o relatório do aluno ${name}?`)) {
+                delete multiStudentPerf[name];
                 localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
-                localStorage.setItem('ctrb_students_db', JSON.stringify(registeredStudents));
                 renderMainContent();
             }
         }
 
         function exportDataBackup() {
-            const backupData = {
-                students: registeredStudents,
-                performance: multiStudentPerf,
-                questions: masterQuestions,
-                topics: topicsData,
-                tabLabels: tabLabels,
-                sheetsLink: sheetsLink
+            const data = {
+                topicsData,
+                masterQuestions,
+                multiStudentPerf,
+                registeredStudents,
+                sheetsLink,
+                tabLabels
             };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-            const dlAnchorElem = document.createElement('a');
-            dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", "ctrb_backup.json");
-            document.body.appendChild(dlAnchorElem);
-            dlAnchorElem.click();
-            dlAnchorElem.remove();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ctrb_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
-        function importDataBackup(event) {
-            const fileReader = new FileReader();
-            fileReader.onload = function (e) {
+        function importDataBackup(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    if (data.students) registeredStudents = data.students;
-                    if (data.performance) multiStudentPerf = data.performance;
-                    if (data.questions) masterQuestions = data.questions;
-                    if (data.tabLabels) tabLabels = data.tabLabels;
-                    if (data.sheetsLink) sheetsLink = data.sheetsLink;
+                    const parsed = JSON.parse(evt.target.result);
+                    if (parsed.topicsData) localStorage.setItem('ctrb_topics_data', JSON.stringify(parsed.topicsData));
+                    if (parsed.masterQuestions) localStorage.setItem('ctrb_questions_data', JSON.stringify(parsed.masterQuestions));
+                    if (parsed.multiStudentPerf) localStorage.setItem('ctrb_multi_perf', JSON.stringify(parsed.multiStudentPerf));
+                    if (parsed.registeredStudents) localStorage.setItem('ctrb_students_db', JSON.stringify(parsed.registeredStudents));
+                    if (parsed.sheetsLink) localStorage.setItem('ctrb_sheets_link', parsed.sheetsLink);
+                    if (parsed.tabLabels) localStorage.setItem('ctrb_tab_labels', JSON.stringify(parsed.tabLabels));
 
-                    localStorage.setItem('ctrb_students_db', JSON.stringify(registeredStudents));
-                    localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
-                    localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
-                    localStorage.setItem('ctrb_tab_labels', JSON.stringify(tabLabels));
-                    localStorage.setItem('ctrb_sheets_link', sheetsLink);
-
-                    alert('Backup restaurado com sucesso!');
-                    location.reload();
+                    alert('Backup restaurado com sucesso! Recarregando...');
+                    window.location.reload();
                 } catch (err) {
-                    alert('Erro ao importar o arquivo de backup.');
+                    alert('Arquivo de backup inválido.');
                 }
             };
-            if (event.target.files[0]) {
-                fileReader.readAsText(event.target.files[0]);
-            }
-        }
-
-        function openEditTopicModal(topicId) {
-            const topic = topicsData.find(t => t.id === topicId);
-            if (!topic) return;
-            document.getElementById('edit-topic-id').value = topic.id;
-            document.getElementById('edit-topic-title').value = topic.title;
-            document.getElementById('edit-topic-yt').value = topic.ytVideoId || '';
-            if (quillTopicEditor) {
-                quillTopicEditor.root.innerHTML = topic.theory || '';
-            }
-            document.getElementById('edit-topic-modal').classList.remove('hidden');
-        }
-
-        function closeEditTopicModal() {
-            document.getElementById('edit-topic-modal').classList.add('hidden');
-        }
-
-        function saveTopicChanges(e) {
-            e.preventDefault();
-            const id = document.getElementById('edit-topic-id').value;
-            const topic = topicsData.find(t => t.id === id);
-            if (topic) {
-                topic.title = document.getElementById('edit-topic-title').value.trim();
-                topic.ytVideoId = document.getElementById('edit-topic-yt').value.trim();
-                if (quillTopicEditor) {
-                    topic.theory = quillTopicEditor.root.innerHTML;
-                }
-                localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
-                closeEditTopicModal();
-                renderSidebarNav();
-                renderMainContent();
-                alert('Módulo atualizado com sucesso!');
-            }
-        }
-
-        function openEditTabsModal() {
-            document.getElementById('tab-label-edital').value = tabLabels.edital;
-            document.getElementById('tab-label-teoria').value = tabLabels.teoria;
-            document.getElementById('tab-label-questoes').value = tabLabels.questoes;
-            document.getElementById('tab-label-simulados').value = tabLabels.simulados;
-            document.getElementById('tab-label-desempenho').value = tabLabels.desempenho;
-            document.getElementById('edit-tabs-modal').classList.remove('hidden');
-        }
-
-        function closeEditTabsModal() {
-            document.getElementById('edit-tabs-modal').classList.add('hidden');
-        }
-
-        function saveCustomTabs(e) {
-            e.preventDefault();
-            tabLabels.edital = document.getElementById('tab-label-edital').value.trim() || 'Edital CTRB';
-            tabLabels.teoria = document.getElementById('tab-label-teoria').value.trim() || 'Materiais Teóricos';
-            tabLabels.questoes = document.getElementById('tab-label-questoes').value.trim() || 'Banco de Questões';
-            tabLabels.simulados = document.getElementById('tab-label-simulados').value.trim() || 'Simulados';
-            tabLabels.desempenho = document.getElementById('tab-label-desempenho').value.trim() || 'Desempenho';
-
-            localStorage.setItem('ctrb_tab_labels', JSON.stringify(tabLabels));
-            closeEditTabsModal();
-            renderNavTabs();
-            renderMainContent();
-            alert('Rótulos das abas salvos com sucesso!');
-        }
-
-        function openSimuladoModal() {
-            const container = document.getElementById('sim-topics-checkboxes');
-            container.innerHTML = topicsData.map(t => `
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="sim_topics" value="${t.id}" checked class="rounded text-amber-500 focus:ring-amber-400">
-                    <span>${t.title}</span>
-                </label>
-            `).join('');
-            document.getElementById('simulado-modal').classList.remove('hidden');
-        }
-
-        function closeSimuladoModal() {
-            document.getElementById('simulado-modal').classList.add('hidden');
-        }
-
-        function generateSimulado(e) {
-            e.preventDefault();
-            const title = document.getElementById('sim-title').value.trim();
-            const qty = parseInt(document.getElementById('sim-qty').value);
-            const checkboxes = document.querySelectorAll('input[name="sim_topics"]:checked');
-            const selectedTopicIds = Array.from(checkboxes).map(cb => cb.value);
-
-            if (selectedTopicIds.length === 0) {
-                alert('Selecione ao menos um subtópico.');
-                return;
-            }
-
-            let pool = [];
-            selectedTopicIds.forEach(id => {
-                if (masterQuestions[id]) {
-                    pool = pool.concat(masterQuestions[id]);
-                }
-            });
-
-            if (pool.length === 0) {
-                alert('Não há questões cadastradas nos tópicos selecionados.');
-                return;
-            }
-
-            pool = pool.sort(() => 0.5 - Math.random());
-            const selectedQuestions = pool.slice(0, Math.min(qty, pool.length));
-
-            currentSimulado = {
-                title: title,
-                questions: selectedQuestions
-            };
-
-            closeSimuladoModal();
-            switchMainTab('simulados');
+            reader.readAsText(file);
         }
     </script>
 </body>
