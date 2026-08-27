@@ -633,6 +633,57 @@
             switchMainTab('edital');
         }
 
+
+        // PROTEÇÃO DO CONTEÚDO EDITÁVEL
+        // Mantém símbolos/fórmulas colados da IA como texto real, evitando que
+        // sequências como <right-arrow> sejam interpretadas pelo HTML/Quill.
+        function normalizeSpecialTokens(value) {
+            if (value === null || value === undefined) return '';
+            let text = String(value);
+
+            // Tokens usados por algumas IAs para representar símbolos.
+            // A substituição ocorre ANTES de qualquer interpretação como HTML.
+            const tokenMap = {
+                'right-arrow': '→', 'left-arrow': '←', 'up-arrow': '↑', 'down-arrow': '↓',
+                'double-right-arrow': '⇒', 'double-left-arrow': '⇐',
+                'right-double-arrow': '⇒', 'left-double-arrow': '⇐',
+                'iff': '⇔', 'implies': '⇒', 'therefore': '∴', 'because': '∵',
+                'infinity': '∞', 'empty-set': '∅', 'emptyset': '∅', 'times': '×',
+                'bullet': '•', 'dot': '·', 'dots': '…', 'ellipsis': '…',
+                'le': '≤', 'ge': '≥', 'neq': '≠', 'approx': '≈', 'pm': '±', 'degree': '°',
+                'check': '✓', 'cross': '✗', 'right-pointing-arrow': '→',
+                'left-pointing-arrow': '←', 'long-right-arrow': '⟶', 'long-left-arrow': '⟵'
+            };
+
+            Object.keys(tokenMap).forEach(name => {
+                const symbol = tokenMap[name];
+                // Aceita <token>, &lt;token&gt;, [token] e {{token}},
+                // independentemente de maiúsculas/minúsculas.
+                const forms = [
+                    new RegExp('(?:<|&lt;|\\?\\[|\\{\\{)\\s*' + name.replace(/[-]/g, '[-\\s_]') + '\\s*(?:>|&gt;|\\]|\\}\\})', 'gi'),
+                    new RegExp('\\\\' + name + '\\b', 'gi')
+                ];
+                forms.forEach(re => { text = text.replace(re, symbol); });
+            });
+
+            return text;
+        }
+
+        function escapeHtmlContent(value) {
+            const normalized = normalizeSpecialTokens(value);
+            return normalized
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function normalizeTheoryHtml(value) {
+            if (!value) return '';
+            return normalizeSpecialTokens(value);
+        }
+
         function initQuillEditor() {
             if (!quillTopicEditor && document.getElementById('quill-editor-topic')) {
                 quillTopicEditor = new Quill('#quill-editor-topic', {
@@ -648,6 +699,37 @@
                         ]
                     }
                 });
+
+                // Ao colar, converte o conteúdo para texto antes de o Quill
+                // interpretar tags pseudo-HTML como <right-arrow>, <dots>, etc.
+                quillTopicEditor.clipboard.addMatcher(Node.ELEMENT_NODE, (node, delta) => {
+                    return delta;
+                });
+                quillTopicEditor.root.addEventListener('paste', (event) => {
+                    // CAPTURE=true é essencial: o Quill possui seu próprio manipulador
+                    // de paste e, sem captura, ele pode interpretar <right-arrow>,
+                    // <dots>, <infinity> etc. como tags HTML antes deste código.
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    const clipboard = event.clipboardData;
+                    if (!clipboard) return;
+
+                    const html = clipboard.getData('text/html');
+                    const plain = clipboard.getData('text/plain') || '';
+                    const range = quillTopicEditor.getSelection(true) || { index: quillTopicEditor.getLength(), length: 0 };
+
+                    if (html) {
+                        // Corrige tokens pseudo-HTML ANTES de o navegador/Quill os interpretar.
+                        const safeHtml = normalizeSpecialTokens(html);
+                        quillTopicEditor.deleteText(range.index, range.length, 'user');
+                        quillTopicEditor.clipboard.dangerouslyPasteHTML(range.index, safeHtml, 'user');
+                    } else {
+                        const safeText = normalizeSpecialTokens(plain);
+                        quillTopicEditor.deleteText(range.index, range.length, 'user');
+                        quillTopicEditor.insertText(range.index, safeText, 'user');
+                    }
+                }, true);
             }
         }
 
@@ -990,7 +1072,7 @@
                                     <i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo
                                 </h3>
                                 <div class="prose dark:prose-invert max-w-none text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                                    ${topic.theory}
+                                    ${normalizeTheoryHtml(topic.theory)}
                                 </div>
                             </div>
 
@@ -1039,12 +1121,12 @@
                                             </div>
                                         ` : ''}
                                     </div>
-                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
+                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${escapeHtmlContent(q.statement)}</p>
                                     <div class="space-y-2 pl-1">
                                         ${q.options.map((opt, optIdx) => `
                                             <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
                                                 <input type="radio" name="opt_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
-                                                <span>${opt}</span>
+                                                <span>${escapeHtmlContent(opt)}</span>
                                             </label>
                                         `).join('')}
                                     </div>
@@ -1304,11 +1386,11 @@
                         <i class="fa-solid fa-circle-check text-base"></i> Resposta Correta! (Registrado no Desempenho)
                     </div>
                     <div class="mb-2 font-semibold">
-                        Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}
+                        Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${escapeHtmlContent(correctText)}
                     </div>
                     <div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60">
                         <span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação da Resposta:</span>
-                        <p class="leading-relaxed font-medium">${motivation}</p>
+                        <p class="leading-relaxed font-medium">${escapeHtmlContent(motivation)}</p>
                     </div>
                 `;
             } else {
@@ -1319,11 +1401,11 @@
                         <i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!
                     </div>
                     <div class="mb-2 font-semibold">
-                        Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}
+                        Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${escapeHtmlContent(correctText)}
                     </div>
                     <div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60">
                         <span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação da Resposta:</span>
-                        <p class="leading-relaxed font-medium">${motivation}</p>
+                        <p class="leading-relaxed font-medium">${escapeHtmlContent(motivation)}</p>
                     </div>
                 `;
             }
@@ -1398,14 +1480,14 @@
             const qId = document.getElementById('q-edit-id').value;
 
             const difficulty = document.getElementById('q-edit-difficulty').value;
-            const statement = document.getElementById('q-edit-statement').value.trim();
-            const opt0 = document.getElementById('q-edit-opt0').value.trim();
-            const opt1 = document.getElementById('q-edit-opt1').value.trim();
-            const opt2 = document.getElementById('q-edit-opt2').value.trim();
-            const opt3 = document.getElementById('q-edit-opt3').value.trim();
-            const opt4 = document.getElementById('q-edit-opt4').value.trim();
+            const statement = normalizeSpecialTokens(document.getElementById('q-edit-statement').value.trim());
+            const opt0 = normalizeSpecialTokens(document.getElementById('q-edit-opt0').value.trim());
+            const opt1 = normalizeSpecialTokens(document.getElementById('q-edit-opt1').value.trim());
+            const opt2 = normalizeSpecialTokens(document.getElementById('q-edit-opt2').value.trim());
+            const opt3 = normalizeSpecialTokens(document.getElementById('q-edit-opt3').value.trim());
+            const opt4 = normalizeSpecialTokens(document.getElementById('q-edit-opt4').value.trim());
             const correct = parseInt(document.getElementById('q-edit-correct').value);
-            const explanation = document.getElementById('q-edit-explanation').value.trim();
+            const explanation = normalizeSpecialTokens(document.getElementById('q-edit-explanation').value.trim());
 
             const isNew = !qId;
             const questionData = {
@@ -1475,7 +1557,7 @@
             const id = document.getElementById('edit-topic-id').value;
             const title = document.getElementById('edit-topic-title').value.trim();
             const yt = document.getElementById('edit-topic-yt').value.trim();
-            const content = quillTopicEditor ? quillTopicEditor.root.innerHTML : '';
+            const content = quillTopicEditor ? normalizeTheoryHtml(quillTopicEditor.root.innerHTML) : '';
 
             const idx = topicsData.findIndex(item => item.id === id);
             if (idx !== -1) {
@@ -1597,7 +1679,7 @@
                     <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                         <div>
                             <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Caderno de Prova</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">${currentSimulado.title}</h2>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">${escapeHtmlContent(currentSimulado.title)}</h2>
                         </div>
                         <span class="text-xs font-black bg-amber-500 text-slate-950 px-3 py-1 rounded-lg">${currentSimulado.questions.length} Questões</span>
                     </div>
@@ -1608,12 +1690,12 @@
                                 <div class="flex items-center gap-2">
                                     <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1}</span>
                                 </div>
-                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
+                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${escapeHtmlContent(q.statement)}</p>
                                 <div class="space-y-2 pl-1">
                                     ${q.options.map((opt, optIdx) => `
                                         <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
                                             <input type="radio" name="opt_sim_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
-                                            <span>${opt}</span>
+                                            <span>${escapeHtmlContent(opt)}</span>
                                         </label>
                                     `).join('')}
                                 </div>
