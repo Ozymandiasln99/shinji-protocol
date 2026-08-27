@@ -1092,7 +1092,7 @@
                             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
                                 <i class="fa-solid fa-calendar-check text-amber-500"></i> Cronograma de Estudos Interativo
                             </h2>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Defina prioridades, prazos, acompanhe o progresso e edite anotações livremente.</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Defina prazos, acompanhe o progresso do edital e adicione observações personalizadas.</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
                             <button onclick="openAddCronModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
@@ -1168,11 +1168,9 @@
                                             <td class="p-3 font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">${item.semana}</td>
                                             <td class="p-3 font-semibold text-slate-800 dark:text-slate-200 ${isDone ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${item.title}</td>
                                             <td class="p-3">
-                                                <select onchange="updateCronPriority('${item.id}', this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold ${item.prioridade === 'Alta' ? 'text-red-600 dark:text-red-400' : item.prioridade === 'Média' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'}">
-                                                    <option value="Alta" ${item.prioridade === 'Alta' ? 'selected' : ''}>Alta</option>
-                                                    <option value="Média" ${item.prioridade === 'Média' ? 'selected' : ''}>Média</option>
-                                                    <option value="Baixa" ${item.prioridade === 'Baixa' ? 'selected' : ''}>Baixa</option>
-                                                </select>
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.prioridade === 'Alta' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : item.prioridade === 'Média' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}">
+                                                    ${item.prioridade}
+                                                </span>
                                             </td>
                                             <td class="p-3">
                                                 <input type="date" value="${item.dataAlvo || ''}" onchange="updateCronDate('${item.id}', this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
@@ -1202,15 +1200,6 @@
                 else item.status = 'Pendente';
                 saveUserCronograma(cronData);
                 renderMainContent();
-            }
-        }
-
-        function updateCronPriority(id, value) {
-            const cronData = getUserCronograma();
-            const item = cronData.find(i => i.id === id);
-            if (item) {
-                item.prioridade = value;
-                saveUserCronograma(cronData);
             }
         }
 
@@ -1662,115 +1651,255 @@
                     <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                         <div>
                             <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório de Evolução</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1"><i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho e Estatísticas de Estudo</h2>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho Geral</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Métricas consolidadas de acertos e erros por subtópico do edital.</p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Respondidas</div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Total de Questões Respondidas</div>
                                 <div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div>
                             </div>
-                            <div class="w-12 h-12 rounded-xl bg-slate-500/10 text-slate-500 flex items-center justify-center text-xl font-black">
+                            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xl font-black">
                                 <i class="fa-solid fa-list-check"></i>
                             </div>
                         </div>
 
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Acertos / Erros</div>
-                                <div class="text-xl font-black text-emerald-500">${totalAcertos} <span class="text-xs text-slate-400">/</span> <span class="text-red-500">${totalErros}</span></div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Taxa de Acerto Geral</div>
+                                <div class="text-2xl font-black text-amber-500">${taxaAcerto}%</div>
                             </div>
-                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
                                 <i class="fa-solid fa-bullseye"></i>
                             </div>
                         </div>
 
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Taxa de Acerto</div>
-                                <div class="text-2xl font-black text-amber-500">${taxaAcerto}%</div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Acertos / Erros</div>
+                                <div class="text-2xl font-black text-emerald-500">${totalAcertos} <span class="text-sm font-normal text-red-500">/ ${totalErros}</span></div>
                             </div>
-                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-percent"></i>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-chart-pie"></i>
                             </div>
                         </div>
                     </div>
 
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
-                            Desempenho por Módulo do Edital
-                        </h3>
-                        <div class="space-y-3">
-                            ${topicsData.map(t => {
-                                const st = studentPerf[t.id] || { acertos: 0, erros: 0 };
-                                const tot = st.acertos + st.erros;
-                                const pct = tot > 0 ? Math.round((st.acertos / tot) * 100) : 0;
-                                return `
-                                    <div class="space-y-1">
-                                        <div class="flex justify-between text-xs font-semibold">
-                                            <span class="text-slate-700 dark:text-slate-300">${t.title}</span>
-                                            <span class="text-slate-500">${st.acertos} acertos / ${st.erros} erros (${pct}%)</span>
-                                        </div>
-                                        <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                            <div class="bg-amber-500 h-full" style="width: ${pct}%"></div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
+                    <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                    <th class="p-3.5 font-bold uppercase tracking-wider">Subtópico</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Acertos</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Erros</th>
+                                    <th class="p-3.5 font-bold uppercase tracking-wider text-center">Aproveitamento</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                ${topicsData.map(t => {
+                                    const stat = studentPerf[t.id] || { acertos: 0, erros: 0 };
+                                    const tTotal = stat.acertos + stat.erros;
+                                    const pct = tTotal > 0 ? Math.round((stat.acertos / tTotal) * 100) : 0;
+                                    return `
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
+                                            <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">${t.title}</td>
+                                            <td class="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">${stat.acertos}</td>
+                                            <td class="p-3 text-center font-bold text-red-500">${stat.erros}</td>
+                                            <td class="p-3 text-center">
+                                                <span class="px-2 py-0.5 rounded font-bold ${pct >= 70 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : pct >= 50 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'}">
+                                                    ${pct}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
         }
 
+        // GERENCIAMENTO DO PAINEL DO PROFESSOR (COM EDICÃO DE PRIORIDADE E DATA ALVO DO CRONOGRAMA)
         function renderProfessorDashboard(main) {
+            if (!profSelectedStudentName && registeredStudents.length > 0) {
+                profSelectedStudentName = registeredStudents[0].name;
+            }
+
+            const studentCron = profSelectedStudentName ? getStudentCronogramaByName(profSelectedStudentName) : [];
+
             main.innerHTML = `
                 <div class="space-y-6">
-                    <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
+                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
                         <div>
-                            <span class="bg-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Painel de Moderação</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1"><i class="fa-solid fa-chalkboard-user text-amber-500"></i> Gestão de Alunos e Plataforma</h2>
+                            <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">Painel de Moderação</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
+                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Gestão Acadêmica & Cronogramas
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Gerencie o plano de estudos, metas, prioridades e acompanhe o desempenho individual dos alunos.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openEditTabsModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs px-3 py-2 rounded-xl font-bold flex items-center gap-1.5 border border-amber-500/30">
+                                <i class="fa-solid fa-pen-to-square"></i> Editar Rótulos das Abas
+                            </button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
-                                Alunos Cadastrados (${registeredStudents.length})
-                            </h3>
-                            <div class="space-y-2 max-h-64 overflow-y-auto custom-scroll pr-2">
-                                ${registeredStudents.length === 0 ? '<p class="text-xs text-slate-400">Nenhum aluno cadastrado no momento.</p>' : ''}
-                                ${registeredStudents.map(st => `
-                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                                        <div>
-                                            <div class="text-xs font-bold text-slate-800 dark:text-slate-200">${st.name}</div>
-                                            <div class="text-[10px] text-slate-400">${st.email}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
+                    <!-- SELEÇÃO DE ALUNO -->
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="w-full md:w-auto flex-1">
+                            <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Selecionar Aluno para Gerenciar Cronograma</label>
+                            <select onchange="changeProfSelectedStudent(this.value)" class="w-full md:w-80 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                                ${registeredStudents.length === 0 ? '<option value="">Nenhum aluno cadastrado</option>' : ''}
+                                ${registeredStudents.map(st => `<option value="${st.name}" ${st.name === profSelectedStudentName ? 'selected' : ''}>${st.name} (${st.email})</option>`).join('')}
+                            </select>
                         </div>
-
-                        <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3">
-                                Configurações Gerais
-                            </h3>
-                            <div class="space-y-3">
-                                <button onclick="openEditTabsModal()" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold py-2.5 px-3 rounded-xl transition flex items-center justify-between border border-slate-200 dark:border-slate-700">
-                                    <span><i class="fa-solid fa-pen-to-square text-amber-500 mr-2"></i> Personalizar Rótulos das Abas</span>
-                                    <i class="fa-solid fa-chevron-right text-slate-400"></i>
-                                </button>
-                                <button onclick="openSimuladoModal()" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold py-2.5 px-3 rounded-xl transition flex items-center justify-between border border-slate-200 dark:border-slate-700">
-                                    <span><i class="fa-solid fa-file-pen text-amber-500 mr-2"></i> Criar Novo Simulado Geral</span>
-                                    <i class="fa-solid fa-chevron-right text-slate-400"></i>
-                                </button>
-                            </div>
-                        </div>
+                        ${profSelectedStudentName ? `
+                            <button onclick="openAddProfStudentCronModal('${profSelectedStudentName}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i> Adicionar Meta para ${profSelectedStudentName}
+                            </button>
+                        ` : ''}
                     </div>
+
+                    ${!profSelectedStudentName ? `
+                        <div class="text-center py-12 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                            <p class="text-xs text-slate-500">Nenhum aluno cadastrado no momento para gerenciar.</p>
+                        </div>
+                    ` : `
+                        <!-- TABELA DE GERENCIAMENTO DE CRONOGRAMA DO ALUNO -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-days text-amber-500"></i> Cronograma de Estudos de: <span class="text-amber-600 dark:text-amber-400 font-black">${profSelectedStudentName}</span>
+                            </h3>
+                            
+                            <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
+                                            <th class="p-3.5 font-bold uppercase tracking-wider text-center">Status</th>
+                                            <th class="p-3.5 font-bold uppercase tracking-wider">Fase</th>
+                                            <th class="p-3.5 font-bold uppercase tracking-wider">Tópico do Edital / Meta</th>
+                                            <th class="p-3.5 font-bold uppercase tracking-wider">Prioridade</th>
+                                            <th class="p-3.5 font-bold uppercase tracking-wider">Data Alvo</th>
+                                            <th class="p-3.5 font-bold uppercase tracking-wider">Anotações / Orientações do Professor</th>
+                                            <th class="p-3.5 font-bold uppercase tracking-wider text-right">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                        ${studentCron.map(item => {
+                                            const isDone = item.status === 'Concluído';
+                                            const isInProgress = item.status === 'Em Andamento';
+                                            return `
+                                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition ${isDone ? 'bg-emerald-50/20 dark:bg-emerald-950/10' : ''}">
+                                                    <td class="p-3 text-center">
+                                                        <button onclick="toggleProfStudentCronStatus('${profSelectedStudentName}', '${item.id}')" class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase transition flex items-center gap-1 mx-auto ${isDone ? 'bg-emerald-500 text-white' : isInProgress ? 'bg-blue-500 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-amber-400 hover:text-slate-950'}">
+                                                            <i class="fa-solid ${isDone ? 'fa-check-circle' : isInProgress ? 'fa-spinner fa-spin' : 'fa-circle'}"></i>
+                                                            ${item.status}
+                                                        </button>
+                                                    </td>
+                                                    <td class="p-3 font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">${item.semana}</td>
+                                                    <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">${item.title}</td>
+                                                    <td class="p-3">
+                                                        <select onchange="updateProfStudentCronPriority('${profSelectedStudentName}', '${item.id}', this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 font-bold focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                                            <option value="Alta" ${item.prioridade === 'Alta' ? 'selected' : ''}>Alta</option>
+                                                            <option value="Média" ${item.prioridade === 'Média' ? 'selected' : ''}>Média</option>
+                                                            <option value="Baixa" ${item.prioridade === 'Baixa' ? 'selected' : ''}>Baixa</option>
+                                                        </select>
+                                                    </td>
+                                                    <td class="p-3">
+                                                        <input type="date" value="${item.dataAlvo || ''}" onchange="updateProfStudentCronDate('${profSelectedStudentName}', '${item.id}', this.value)" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                                    </td>
+                                                    <td class="p-3">
+                                                        <input type="text" value="${item.notes || ''}" onchange="updateProfStudentCronNotes('${profSelectedStudentName}', '${item.id}', this.value)" placeholder="Orientações do professor..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-500">
+                                                    </td>
+                                                    <td class="p-3 text-right whitespace-nowrap">
+                                                        <button onclick="deleteProfStudentCronItem('${profSelectedStudentName}', '${item.id}')" class="text-red-400 hover:text-red-600 p-1" title="Excluir Meta"><i class="fa-solid fa-trash text-xs"></i></button>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `}
                 </div>
             `;
+        }
+
+        function changeProfSelectedStudent(stName) {
+            profSelectedStudentName = stName;
+            renderMainContent();
+        }
+
+        function toggleProfStudentCronStatus(studentName, itemId) {
+            const cron = getStudentCronogramaByName(studentName);
+            const item = cron.find(i => i.id === itemId);
+            if (item) {
+                if (item.status === 'Pendente') item.status = 'Em Andamento';
+                else if (item.status === 'Em Andamento') item.status = 'Concluído';
+                else item.status = 'Pendente';
+                saveStudentCronogramaByName(studentName, cron);
+                renderMainContent();
+            }
+        }
+
+        function updateProfStudentCronPriority(studentName, itemId, value) {
+            const cron = getStudentCronogramaByName(studentName);
+            const item = cron.find(i => i.id === itemId);
+            if (item) {
+                item.prioridade = value;
+                saveStudentCronogramaByName(studentName, cron);
+            }
+        }
+
+        function updateProfStudentCronDate(studentName, itemId, value) {
+            const cron = getStudentCronogramaByName(studentName);
+            const item = cron.find(i => i.id === itemId);
+            if (item) {
+                item.dataAlvo = value;
+                saveStudentCronogramaByName(studentName, cron);
+            }
+        }
+
+        function updateProfStudentCronNotes(studentName, itemId, value) {
+            const cron = getStudentCronogramaByName(studentName);
+            const item = cron.find(i => i.id === itemId);
+            if (item) {
+                item.notes = value;
+                saveStudentCronogramaByName(studentName, cron);
+            }
+        }
+
+        function deleteProfStudentCronItem(studentName, itemId) {
+            if (confirm(`Deseja remover esta meta do cronograma de ${studentName}?`)) {
+                let cron = getStudentCronogramaByName(studentName);
+                cron = cron.filter(i => i.id !== itemId);
+                saveStudentCronogramaByName(studentName, cron);
+                renderMainContent();
+            }
+        }
+
+        function openAddProfStudentCronModal(studentName) {
+            const title = prompt('Informe o título da nova meta para ' + studentName + ':');
+            if (!title) return;
+            const semana = prompt('Informe a fase/semana (Ex: Semana 1):', 'Semana 1') || 'Semana 1';
+            
+            const cron = getStudentCronogramaByName(studentName);
+            cron.push({
+                id: `cron_prof_${Date.now()}`,
+                semana: semana,
+                title: title,
+                status: 'Pendente',
+                prioridade: 'Média',
+                dataAlvo: '',
+                notes: ''
+            });
+            saveStudentCronogramaByName(studentName, cron);
+            renderMainContent();
         }
     </script>
 </body>
