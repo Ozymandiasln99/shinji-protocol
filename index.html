@@ -546,7 +546,7 @@
                 id: `cron_${t.id}`,
                 semana: `Semana ${Math.floor(idx / 2) + 1}`,
                 title: t.title,
-                status: 'Pendente', // 'Pendente', 'Em Andamento', 'Concluído'
+                status: 'Pendente',
                 prioridade: idx < 4 ? 'Alta' : (idx < 8 ? 'Média' : 'Baixa'),
                 dataAlvo: '',
                 notes: `Revisar teoria do tópico ${t.id} e resolver 20 questões.`
@@ -667,7 +667,6 @@
         function renderNavTabs() {
             const nav = document.getElementById('main-nav');
             let html = '';
-
             const isVisitor = currentUser.role === 'visitante';
 
             html += `
@@ -685,7 +684,6 @@
                 </button>
             `;
 
-            // Aba Cronograma e Desempenho apenas para alunos logados e professores
             if (!isVisitor) {
                 html += `
                     <button id="tab-nav-cronograma" onclick="switchMainTab('cronograma')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-slate-300 hover:text-white hover:bg-slate-700/50">
@@ -1072,7 +1070,6 @@
 
             main.innerHTML = `
                 <div class="space-y-6">
-                    <!-- HEADER DO CRONOGRAMA -->
                     <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
                         <div>
                             <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Plano Estratégico de Estudos</span>
@@ -1091,7 +1088,6 @@
                         </div>
                     </div>
 
-                    <!-- METRICAS E BARRA DE PROGRESSO -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
                             <div>
@@ -1124,12 +1120,10 @@
                         </div>
                     </div>
 
-                    <!-- BARRA VISUAL DE PROGRESSO -->
                     <div class="w-full bg-slate-200 dark:bg-slate-800 h-3 rounded-full overflow-hidden shadow-inner">
                         <div class="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-300" style="width: ${pct}%"></div>
                     </div>
 
-                    <!-- TABELA INTERATIVA DO CRONOGRAMA -->
                     <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
                         <table class="w-full text-left border-collapse text-xs">
                             <thead>
@@ -1608,283 +1602,249 @@
         }
 
         function renderPerformanceView(main) {
-            let userPerfData = multiStudentPerf[currentUser.name] || {};
-
+            const uName = currentUser.name || 'Visitante';
+            const perf = multiStudentPerf[uName] || {};
+            
             let totalAcertos = 0;
             let totalErros = 0;
-            let topicPerformances = [];
 
             topicsData.forEach(t => {
-                const data = userPerfData[t.id] || { acertos: 0, erros: 0 };
-                totalAcertos += data.acertos;
-                totalErros += data.erros;
-                const tot = data.acertos + data.erros;
-                const apr = tot > 0 ? Math.round((data.acertos / tot) * 100) : 0;
-                topicPerformances.push({ title: t.title, aproveitamento: apr, acertos: data.acertos, erros: data.erros });
+                if (perf[t.id]) {
+                    totalAcertos += perf[t.id].acertos || 0;
+                    totalErros += perf[t.id].erros || 0;
+                }
             });
 
             const totalRespondidas = totalAcertos + totalErros;
-            const aproveitamentoGeral = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
-            let melhorTopico = topicPerformances.reduce((prev, current) => (prev.aproveitamento > current.aproveitamento) ? prev : current, topicPerformances[0]);
+            const pctGeral = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
 
-            main.innerHTML = `
-                <div class="space-y-6 flex flex-col h-full">
-                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
-                        <div>
-                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório Individual de Estudos</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">
-                                ${currentUser.role === 'aluno' ? `Desempenho de ${currentUser.name}` : 'Painel Geral de Rendimento'}
-                            </h2>
-                        </div>
-                        <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <div class="text-right">
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Aproveitamento Geral</div>
-                                <div class="text-lg font-black text-amber-500">${aproveitamentoGeral}%</div>
-                            </div>
-                            <div class="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Resolvidas</div>
-                                <div class="text-sm font-bold text-slate-700 dark:text-slate-200">${totalRespondidas}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-amber-500 text-slate-950 p-3 rounded-xl font-black text-lg shadow">
-                                <i class="fa-solid fa-award"></i>
-                            </div>
-                            <div>
-                                <div class="text-[11px] font-bold uppercase text-amber-600 dark:text-amber-400">Destaque de Aprendizagem</div>
-                                <div class="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5">Módulo de Maior Assertividade: <u>${melhorTopico ? melhorTopico.title : 'N/A'}</u></div>
-                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Taxa de ${melhorTopico ? melhorTopico.aproveitamento : 0}% de acertos registrados.</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
-                            <h3 class="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                                <i class="fa-solid fa-chart-bar text-amber-500"></i> Aproveitamento por Módulo (%)
-                            </h3>
-                            <div class="relative h-64">
-                                <canvas id="chartAproveitamento"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
-                            <h3 class="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                                <i class="fa-solid fa-chart-pie text-amber-500"></i> Volume (Acertos vs Erros)
-                            </h3>
-                            <div class="relative h-64 flex items-center justify-center">
-                                <canvas id="chartAcertosErros"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-2 mt-2">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-amber-500"></i> Detalhamento por Módulo
-                        </h3>
-                        <div class="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
-                            <table class="w-full text-left border-collapse text-xs">
-                                <thead>
-                                    <tr class="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                                        <th class="p-3.5 font-bold uppercase tracking-wider">Módulo / Subtópico</th>
-                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Acertos</th>
-                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Erros</th>
-                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Total</th>
-                                        <th class="p-3.5 font-bold uppercase tracking-wider text-center">Aproveitamento</th>
-                                        ${currentUser.role === 'admin' ? '<th class="p-3.5 font-bold uppercase tracking-wider text-right">Controle Admin</th>' : ''}
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                                    ${topicsData.map(t => {
-                                        const stats = userPerfData[t.id] || { acertos: 0, erros: 0 };
-                                        const tot = stats.acertos + stats.erros;
-                                        const apr = tot > 0 ? Math.round((stats.acertos / tot) * 100) : 0;
-                                        return `
-                                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition">
-                                                <td class="p-3.5 font-medium text-slate-800 dark:text-slate-200">${t.title}</td>
-                                                <td class="p-3.5 text-center font-bold text-emerald-600 dark:text-emerald-400">${stats.acertos}</td>
-                                                <td class="p-3.5 text-center font-bold text-red-500">${stats.erros}</td>
-                                                <td class="p-3.5 text-center font-bold text-slate-700 dark:text-slate-300">${tot}</td>
-                                                <td class="p-3.5 text-center">
-                                                    <span class="px-2 py-0.5 rounded-lg font-black text-[11px] ${apr >= 70 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : apr >= 40 ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'}">
-                                                        ${apr}%
-                                                    </span>
-                                                </td>
-                                                ${currentUser.role === 'admin' ? `
-                                                    <td class="p-3.5 text-right space-x-1">
-                                                        <button onclick="adjustPerformance('${t.id}', 'acerto', 1)" class="bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">+ Acerto</button>
-                                                        <button onclick="adjustPerformance('${t.id}', 'erro', 1)" class="bg-red-500 text-white px-2 py-1 rounded text-[10px] font-bold">+ Erro</button>
-                                                    </td>
-                                                ` : ''}
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            setTimeout(() => {
-                renderCharts(topicPerformances, totalAcertos, totalErros);
-            }, 50);
-        }
-
-        function renderCharts(topicPerformances, totalAcertos, totalErros) {
-            const labels = topicsData.map(t => t.id);
-            const dataApr = topicPerformances.map(tp => tp.aproveitamento);
-            const isDark = document.documentElement.classList.contains('dark');
-            const gridColor = isDark ? '#334155' : '#e2e8f0';
-            const textColor = isDark ? '#cbd5e1' : '#64748b';
-
-            const ctxBar = document.getElementById('chartAproveitamento');
-            if (ctxBar) {
-                new Chart(ctxBar, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Aproveitamento (%)',
-                            data: dataApr,
-                            backgroundColor: '#eab308',
-                            borderRadius: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { beginAtZero: true, max: 100, grid: { color: gridColor }, ticks: { color: textColor } },
-                            x: { grid: { display: false }, ticks: { color: textColor } }
-                        }
-                    }
-                });
-            }
-
-            const ctxPie = document.getElementById('chartAcertosErros');
-            if (ctxPie) {
-                new Chart(ctxPie, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Acertos', 'Erros'],
-                        datasets: [{
-                            data: [totalAcertos > 0 ? totalAcertos : 1, totalErros],
-                            backgroundColor: ['#10b981', '#ef4444'],
-                            borderWidth: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { position: 'bottom', labels: { color: textColor, font: { size: 11 } } }
-                        }
-                    }
-                });
-            }
-        }
-
-        function renderProfessorDashboard(main) {
             main.innerHTML = `
                 <div class="space-y-6">
-                    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-gran-navy text-white p-6 rounded-2xl shadow-md border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                         <div>
-                            <span class="bg-amber-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">Controle Master</span>
-                            <h2 class="text-2xl font-black mt-2"><i class="fa-solid fa-chalkboard-user text-amber-400"></i> Painel do Professor</h2>
-                            <p class="text-xs text-slate-300 mt-1">Gerencie abas, edite o link da planilha e monitore ou exclua relatórios individuais de alunos.</p>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="exportDataBackup()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
-                                <i class="fa-solid fa-download"></i> Baixar Backup JSON
-                            </button>
-                            <label class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-3.5 py-2 rounded-xl text-xs font-bold transition border border-amber-500/30 flex items-center gap-1.5 cursor-pointer">
-                                <i class="fa-solid fa-upload"></i> Restaurar Backup
-                                <input type="file" accept=".json" onchange="importDataBackup(event)" class="hidden">
-                            </label>
-                            <button onclick="openEditTabsModal()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 px-3.5 py-2 rounded-xl text-xs font-bold transition border border-amber-500/30 flex items-center gap-1.5">
-                                <i class="fa-solid fa-pen-to-square"></i> Editar Abas
-                            </button>
-                            <button onclick="openSimuladoModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
-                                <i class="fa-solid fa-file-pen"></i> Novo Simulado
-                            </button>
+                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório Individual</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-amber-500"></i> Desempenho Pessoal de ${uName}
+                            </h2>
                         </div>
                     </div>
 
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-3">
-                        <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                            <i class="fa-solid fa-file-excel text-emerald-500"></i> Gestão do Link da Planilha do Professor
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Respondidas</div>
+                                <div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Taxa de Acertos</div>
+                                <div class="text-2xl font-black text-emerald-500">${pctGeral}%</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-bullseye"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Acertos / Erros</div>
+                                <div class="text-2xl font-black text-slate-800 dark:text-slate-100"><span class="text-emerald-500">${totalAcertos}</span> / <span class="text-red-500">${totalErros}</span></div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <i class="fa-solid fa-layer-group text-amber-500"></i> Desempenho Detalhado por Subtópico
                         </h3>
-                        <form onsubmit="saveSheetsLink(event)" class="flex flex-col md:flex-row gap-3 items-center">
-                            <div class="flex-1 w-full">
-                                <label class="block text-[11px] font-bold text-slate-500 mb-1">URL da Planilha (Google Sheets / Excel Web)</label>
-                                <input type="url" id="prof-sheets-url" value="${sheetsLink}" required placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                            </div>
-                            <div class="flex gap-2 w-full md:w-auto md:mt-5">
-                                <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold transition shadow whitespace-nowrap">
-                                    Salvar Link
-                                </button>
-                                <a href="${sheetsLink}" target="_blank" rel="noopener noreferrer" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap border border-slate-700">
-                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Planilha
-                                </a>
-                            </div>
-                        </form>
+                        <div class="space-y-3">
+                            ${topicsData.map(t => {
+                                const tPerf = perf[t.id] || { acertos: 0, erros: 0 };
+                                const tTot = tPerf.acertos + tPerf.erros;
+                                const tPct = tTot > 0 ? Math.round((tPerf.acertos / tTot) * 100) : 0;
+                                return `
+                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl space-y-2">
+                                        <div class="flex justify-between items-center text-xs">
+                                            <span class="font-bold text-slate-800 dark:text-slate-200">${t.title}</span>
+                                            <span class="font-bold text-slate-600 dark:text-slate-400">${tPerf.acertos} acertos / ${tPerf.erros} erros (${tPct}%)</span>
+                                        </div>
+                                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                            <div class="bg-amber-500 h-full transition-all" style="width: ${tPct}%"></div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
                 </div>
             `;
         }
 
-        function saveSheetsLink(e) {
-            e.preventDefault();
-            sheetsLink = document.getElementById('prof-sheets-url').value.trim();
-            localStorage.setItem('ctrb_sheets_link', sheetsLink);
-            alert('Link da planilha salvo com sucesso!');
-        }
+        // PAINEL DO PROFESSOR COM RELATÓRIO DE PROGRESSÃO DOS ALUNOS
+        function renderProfessorDashboard(main) {
+            let totalAlunos = registeredStudents.length;
+            let totalRespostasGlobais = 0;
+            let totalAcertosGlobais = 0;
 
-        function exportDataBackup() {
-            const data = {
-                topicsData,
-                masterQuestions,
-                registeredStudents,
-                multiStudentPerf,
-                tabLabels,
-                sheetsLink
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `ctrb_backup_${new Date().toISOString().slice(0, 10)}.json`;
-            a.click();
-        }
+            registeredStudents.forEach(st => {
+                const stPerf = multiStudentPerf[st.name] || {};
+                Object.values(stPerf).forEach(p => {
+                    totalAcertosGlobais += p.acertos || 0;
+                    totalRespostasGlobais += (p.acertos || 0) + (p.erros || 0);
+                });
+            });
 
-        function importDataBackup(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+            const pctGlobal = totalRespostasGlobais > 0 ? Math.round((totalAcertosGlobais / totalRespostasGlobais) * 100) : 0;
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const parsed = JSON.parse(event.target.result);
-                    if (parsed.topicsData) localStorage.setItem('ctrb_topics_data', JSON.stringify(parsed.topicsData));
-                    if (parsed.masterQuestions) localStorage.setItem('ctrb_questions_data', JSON.stringify(parsed.masterQuestions));
-                    if (parsed.registeredStudents) localStorage.setItem('ctrb_students_db', JSON.stringify(parsed.registeredStudents));
-                    if (parsed.multiStudentPerf) localStorage.setItem('ctrb_multi_perf', JSON.stringify(parsed.multiStudentPerf));
-                    if (parsed.tabLabels) localStorage.setItem('ctrb_tab_labels', JSON.stringify(parsed.tabLabels));
-                    if (parsed.sheetsLink) localStorage.setItem('ctrb_sheets_link', parsed.sheetsLink);
+            main.innerHTML = `
+                <div class="space-y-6">
+                    <!-- CABEÇALHO DO PAINEL DO PROFESSOR -->
+                    <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-4">
+                        <div>
+                            <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Gestão Pedagógica</span>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1 flex items-center gap-2">
+                                <i class="fa-solid fa-chalkboard-user text-amber-500"></i> Painel de Moderação & Controle do Professor
+                            </h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Acompanhe o rendimento dos alunos cadastrados, gerencie bancos de questões e edite a plataforma.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="openAddQuestionModal()" class="bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-2 border border-amber-500/30">
+                                <i class="fa-solid fa-plus-circle"></i> Nova Questão
+                            </button>
+                            <button onclick="openSimuladoModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-2">
+                                <i class="fa-solid fa-file-pen"></i> Criar Simulado
+                            </button>
+                            <button onclick="openEditTabsModal()" class="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-2 border border-slate-300 dark:border-slate-700">
+                                <i class="fa-solid fa-pen-to-square"></i> Rótulos das Abas
+                            </button>
+                        </div>
+                    </div>
 
-                    alert('Backup restaurado com sucesso! A página será recarregada.');
-                    window.location.reload();
-                } catch (err) {
-                    alert('Erro ao importar arquivo JSON de backup.');
-                }
-            };
-            reader.readAsText(file);
+                    <!-- CARDS DE METRICAS GERAIS -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Alunos Cadastrados</div>
+                                <div class="text-2xl font-black text-amber-500">${totalAlunos}</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-users"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Aproveitamento Médio Turma</div>
+                                <div class="text-2xl font-black text-emerald-500">${pctGlobal}%</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                            </div>
+                        </div>
+
+                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase text-slate-400">Questões Respondidas (Total)</div>
+                                <div class="text-2xl font-black text-blue-500">${totalRespostasGlobais}</div>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl font-black">
+                                <i class="fa-solid fa-clipboard-check"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RELATÓRIO DE PROGRESSÃO DOS ALUNOS -->
+                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+                            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-chart-user text-amber-500"></i> Relatório de Acompanhamento e Progressão dos Alunos
+                            </h3>
+                            <span class="text-xs text-slate-400 font-medium">Monitoramento individual e por módulo</span>
+                        </div>
+
+                        ${totalAlunos === 0 ? `
+                            <div class="text-center py-8 text-xs text-slate-400">
+                                <i class="fa-solid fa-user-slash text-2xl mb-2 text-slate-300 dark:text-slate-600 block"></i>
+                                Nenhum aluno cadastrado na plataforma até o momento.
+                            </div>
+                        ` : `
+                            <div class="space-y-4">
+                                ${registeredStudents.map(st => {
+                                    const stPerf = multiStudentPerf[st.name] || {};
+                                    let stAcertos = 0;
+                                    let stErros = 0;
+
+                                    topicsData.forEach(t => {
+                                        if (stPerf[t.id]) {
+                                            stAcertos += stPerf[t.id].acertos || 0;
+                                            stErros += stPerf[t.id].erros || 0;
+                                        }
+                                    });
+
+                                    const stTotal = stAcertos + stErros;
+                                    const stPct = stTotal > 0 ? Math.round((stAcertos / stTotal) * 100) : 0;
+
+                                    return `
+                                        <div class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">
+                                            <div class="flex flex-wrap justify-between items-center gap-2">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="w-9 h-9 rounded-full bg-amber-500/20 text-amber-500 font-bold flex items-center justify-center text-sm">
+                                                        ${st.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${st.name}</h4>
+                                                        <p class="text-[11px] text-slate-400">${st.email}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-4 text-xs font-semibold">
+                                                    <div><span class="text-slate-400">Respondidas:</span> <span class="text-slate-800 dark:text-slate-200 font-bold">${stTotal}</span></div>
+                                                    <div><span class="text-slate-400">Acertos/Erros:</span> <span class="text-emerald-500 font-bold">${stAcertos}</span> / <span class="text-red-500 font-bold">${stErros}</span></div>
+                                                    <div><span class="text-slate-400">Taxa:</span> <span class="text-amber-500 font-black">${stPct}%</span></div>
+                                                </div>
+                                            </div>
+
+                                            <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                                <div class="bg-amber-500 h-full transition-all" style="width: ${stPct}%"></div>
+                                            </div>
+
+                                            <details class="text-xs group">
+                                                <summary class="cursor-pointer font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1">
+                                                    <span>Ver detalhamento por subtópico</span>
+                                                    <i class="fa-solid fa-chevron-down text-[10px] group-open:rotate-180 transition-transform"></i>
+                                                </summary>
+                                                <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60">
+                                                    ${topicsData.map(t => {
+                                                        const tp = stPerf[t.id] || { acertos: 0, erros: 0 };
+                                                        const tpTot = tp.acertos + tp.erros;
+                                                        const tpPct = tpTot > 0 ? Math.round((tp.acertos / tpTot) * 100) : 0;
+                                                        return `
+                                                            <div class="p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 text-[11px]">
+                                                                <div class="font-bold text-slate-700 dark:text-slate-300 truncate" title="${t.title}">${t.title}</div>
+                                                                <div class="flex justify-between items-center text-slate-500 dark:text-slate-400 mt-1">
+                                                                    <span>${tp.acertos}A / ${tp.erros}E</span>
+                                                                    <span class="font-bold text-amber-500">${tpPct}%</span>
+                                                                </div>
+                                                            </div>
+                                                        `;
+                                                    }).join('')}
+                                                </div>
+                                            </details>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
         }
     </script>
 </body>
