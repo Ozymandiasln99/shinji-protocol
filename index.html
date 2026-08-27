@@ -2162,35 +2162,5 @@ document.addEventListener('paste', function (event) {
             alert('Meta adicionada ao cronograma do aluno com sucesso!');
         }
        <script>
-           
-    <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-  // Suas chaves reais do projeto shinji-protocol
-  const firebaseConfig = {
-    apiKey: "AIzaSyBlKg8Uq7PqRqDiEZWe5dDULrBzutRqYFY",
-    authDomain: "shinji-protocol.firebaseapp.com",
-    projectId: "shinji-protocol",
-    storageBucket: "shinji-protocol.firebasestorage.app",
-    messagingSenderId: "726326569686",
-    appId: "1:726326569686:web:8c12cfe4aec5f8e78ab777",
-    measurementId: "G-2G77B9BEHN"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // Funções de integração com a nuvem
-  window.saveTopicToCloud = async function(topicId, data) {
-    await setDoc(doc(db, "modulos", topicId), data, { merge: true });
-  };
-
-  window.loadTopicFromCloud = async function(topicId) {
-    const docRef = doc(db, "modulos", topicId);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? docSnap.data() : null;
-  };
-    </script>
 </body>
 </html>
