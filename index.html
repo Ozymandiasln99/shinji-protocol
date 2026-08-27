@@ -55,6 +55,48 @@
         .ql-container { border-radius: 0 0 0.5rem 0.5rem; background-color: #ffffff; }
         .dark .ql-container { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
     </style>
+
+<script>
+document.addEventListener('paste', function (event) {
+    const target = event.target;
+    if (!target) return;
+
+    // Atua no editor Quill da teoria. Para textareas/input de questões,
+    // o navegador já mantém símbolos Unicode normalmente.
+    const editor = target.closest && target.closest('#quill-editor-topic');
+    if (!editor) return;
+
+    const clip = event.clipboardData || window.clipboardData;
+    if (!clip) return;
+
+    const plain = clip.getData('text/plain');
+    if (!plain) return;
+
+    const normalized = window.normalizeSymbolTokens
+        ? window.normalizeSymbolTokens(plain)
+        : plain;
+
+    if (normalized === plain) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    // Insere texto puro já normalizado na posição atual.
+    const quill = window.quillTopicEditor;
+    if (quill) {
+        const range = quill.getSelection(true);
+        if (range) {
+            quill.insertText(range.index, normalized, 'user');
+            quill.setSelection(range.index + normalized.length, 0, 'silent');
+        } else {
+            quill.insertText(quill.getLength() - 1, normalized, 'user');
+        }
+    } else {
+        document.execCommand('insertText', false, normalized);
+    }
+}, true);
+</script>
+
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
 
@@ -446,7 +488,127 @@
     </div>
 
     <!-- JAVASCRIPT & ENGINE DE DADOS -->
-    <script>
+    
+<script>
+(function () {
+    // Normaliza nomes de símbolos que IAs/editor podem entregar como <token>.
+    // É aplicado somente no conteúdo colado/editado; não altera o restante do site.
+    const SYMBOL_TOKENS = {
+        // Conjuntos numéricos
+        "naturals":"ℕ", "natural":"ℕ", "n":"ℕ", "mathbb-n":"ℕ", "mathbbn":"ℕ",
+        "integers":"ℤ", "integer":"ℤ", "mathbb-z":"ℤ", "mathbbz":"ℤ",
+        "rationals":"ℚ", "rational":"ℚ", "mathbb-q":"ℚ", "mathbbq":"ℚ",
+        "reals":"ℝ", "real":"ℝ", "mathbb-r":"ℝ", "mathbbr":"ℝ",
+        "irrationals":"𝕀", "irrational":"𝕀",
+        "complex":"ℂ", "complexes":"ℂ", "mathbb-c":"ℂ", "mathbbc":"ℂ",
+
+        // Relações e lógica
+        "in":"∈", "not-in":"∉", "notin":"∉", "belongs-to":"∈",
+        "subset":"⊂", "proper-subset":"⊂", "subseteq":"⊆", "subset-or-equal":"⊆",
+        "superset":"⊃", "supseteq":"⊇", "superset-or-equal":"⊇",
+        "not-subset":"⊄", "not-subseteq":"⊈", "not-superset":"⊅",
+        "equal":"=", "neq":"≠", "not-equal":"≠", "approx":"≈",
+        "equiv":"≡", "congruent":"≅", "proportional":"∝",
+        "less-than":"<", "greater-than":">", "le":"≤", "leq":"≤",
+        "ge":"≥", "geq":"≥", "much-less":"≪", "much-greater":"≫",
+
+        // Set/logic
+        "empty-set":"∅", "empty":"∅", "union":"∪", "intersection":"∩",
+        "cap":"∩", "cup":"∪", "setminus":"∖", "difference":"∖",
+        "forall":"∀", "exists":"∃", "not-exists":"∄",
+        "therefore":"∴", "because":"∵", "and":"∧", "or":"∨",
+        "not":"¬", "implies":"⇒", "if-and-only-if":"⇔", "iff":"⇔",
+        "right-double-arrow":"⇒", "left-double-arrow":"⇐", "double-arrow":"⇔",
+
+        // Set theory / functions
+        "element-of":"∈", "contains":"∋", "not-contains":"∌",
+        "power-set":"𝒫", "powerset":"𝒫",
+        "function":"ƒ", "composition":"∘",
+
+        // Arrows
+        "right-arrow":"→", "left-arrow":"←", "up-arrow":"↑", "down-arrow":"↓",
+        "up-right-arrow":"↗", "up-left-arrow":"↖", "down-right-arrow":"↘", "down-left-arrow":"↙",
+        "left-right-arrow":"↔", "right-left-arrow":"↔",
+        "long-right-arrow":"⟶", "long-left-arrow":"⟵", "long-left-right-arrow":"⟷",
+        "right-double-arrow":"⇒", "left-double-arrow":"⇐",
+        "double-right-arrow":"⇒", "double-left-arrow":"⇐",
+        "double-left-right-arrow":"⇔", "iff-arrow":"⇔",
+
+        // Common math operators
+        "infinity":"∞", "inf":"∞", "plus-minus":"±", "pm":"±",
+        "minus-plus":"∓", "mp":"∓", "times":"×", "multiply":"×",
+        "divide":"÷", "degree":"°", "angle":"∠", "perpendicular":"⊥",
+        "parallel":"∥", "triangle":"△", "square":"□", "circle":"○",
+        "dot":"·", "cdot":"·", "dots":"…", "ellipsis":"…",
+        "ldots":"…", "cdots":"⋯", "vdots":"⋮", "ddots":"⋱",
+        "there-is":"∃", "sum":"∑", "product":"∏",
+        "sqrt":"√", "integral":"∫", "partial":"∂", "nabla":"∇",
+        "delta":"Δ", "capital-delta":"Δ", "theta":"θ", "alpha":"α", "beta":"β",
+        "gamma":"γ", "lambda":"λ", "mu":"μ", "pi":"π", "sigma":"σ",
+        "omega":"ω", "phi":"φ", "rho":"ρ", "tau":"τ",
+
+        // Common Greek uppercase
+        "capital-alpha":"Α", "capital-beta":"Β", "capital-gamma":"Γ",
+        "capital-theta":"Θ", "capital-lambda":"Λ", "capital-pi":"Π",
+        "capital-sigma":"Σ", "capital-phi":"Φ", "capital-psi":"Ψ",
+        "capital-omega":"Ω",
+
+        // Fractions / comparison text tokens
+        "half":"½", "quarter":"¼", "three-quarters":"¾",
+        "one-half":"½", "one-quarter":"¼", "three-quarter":"¾"
+    };
+
+    function normalizeSymbolTokens(value) {
+        if (!value) return value;
+
+        // Decodifica entidades HTML antes de procurar tokens.
+        let s = value.replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&");
+
+        // <right-arrow>, <naturals>, etc.
+        s = s.replace(/<\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*>/g, function (m, key) {
+            const k = key.toLowerCase();
+            return Object.prototype.hasOwnProperty.call(SYMBOL_TOKENS, k)
+                ? SYMBOL_TOKENS[k] : m;
+        });
+
+        // [right-arrow] e {right-arrow}, formatos que algumas IAs usam.
+        s = s.replace(/[\[\{]\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*[\]\}]/g, function (m, key) {
+            const k = key.toLowerCase();
+            return Object.prototype.hasOwnProperty.call(SYMBOL_TOKENS, k)
+                ? SYMBOL_TOKENS[k] : m;
+        });
+
+        // Nomes com barra invertida vindos de IA: \mathbb{N}, \mathbb N etc.
+        s = s.replace(/\\mathbb\s*\{\s*([NZQRC])\s*\}/g, function (_, c) {
+            return ({N:"ℕ", Z:"ℤ", Q:"ℚ", R:"ℝ", C:"ℂ"})[c] || _;
+        });
+
+        // Comandos LaTeX isolados que deveriam ser símbolo visual fora de fórmula.
+        const latex = {
+            "\\in":"∈", "\\notin":"∉", "\\subset":"⊂", "\\subseteq":"⊆",
+            "\\supset":"⊃", "\\supseteq":"⊇", "\\cup":"∪", "\\cap":"∩",
+            "\\emptyset":"∅", "\\varnothing":"∅", "\\infty":"∞",
+            "\\le":"≤", "\\leq":"≤", "\\ge":"≥", "\\geq":"≥",
+            "\\neq":"≠", "\\ne":"≠", "\\approx":"≈", "\\pm":"±",
+            "\\times":"×", "\\cdot":"·", "\\to":"→", "\\rightarrow":"→",
+            "\\leftarrow":"←", "\\leftrightarrow":"↔", "\\Rightarrow":"⇒",
+            "\\Leftarrow":"⇐", "\\Leftrightarrow":"⇔", "\\forall":"∀",
+            "\\exists":"∃", "\\therefore":"∴", "\\ldots":"…", "\\cdots":"⋯"
+        };
+        Object.keys(latex).forEach(function (k) {
+            s = s.split(k).join(latex[k]);
+        });
+
+        return s;
+    }
+
+    // Disponibiliza para o restante do arquivo, caso já exista um manipulador de paste.
+    window.normalizeSymbolTokens = normalizeSymbolTokens;
+    window.SYMBOL_TOKENS = SYMBOL_TOKENS;
+})();
+</script>
+
+<script>
         // ESTADO GLOBAL
         let currentUser = JSON.parse(localStorage.getItem('ctrb_user')) || { role: 'visitante', name: 'Visitante' };
         let registeredStudents = JSON.parse(localStorage.getItem('ctrb_students_db')) || [];
