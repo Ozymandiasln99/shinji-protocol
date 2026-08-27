@@ -2163,33 +2163,70 @@ document.addEventListener('paste', function (event) {
         }
     </script>
 
-    <!-- FIREBASE WEB SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
-        import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-analytics.js";
+<!-- FIREBASE + FIRESTORE: integração para GitHub Pages -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBlKg8Uq7PqRqDIeZWe5dDULrBzutRqyFY",
-            authDomain: "shinji-protocol.firebaseapp.com",
-            projectId: "shinji-protocol",
-            storageBucket: "shinji-protocol.firebasestorage.app",
-            messagingSenderId: "726326569686",
-            appId: "1:726326569686:web:8c12cfe4aec5f8e78ab777",
-            measurementId: "G-2G77B9BEHN"
-        };
+  const firebaseConfig = {
+    apiKey: "AIzaSyBlKg8Uq7PqRqDIeZWe5dDULrBzutRqyFY",
+    authDomain: "shinji-protocol.firebaseapp.com",
+    projectId: "shinji-protocol",
+    storageBucket: "shinji-protocol.firebasestorage.app",
+    messagingSenderId: "726326569686",
+    appId: "1:726326569686:web:8c12cfe4aec5f8e78ab777",
+    measurementId: "G-2G77B9BEHN"
+  };
 
-        const app = initializeApp(firebaseConfig);
-        window.firebaseApp = app;
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-        isSupported().then((supported) => {
-            if (supported) {
-                window.firebaseAnalytics = getAnalytics(app);
-                console.log("Firebase Analytics conectado.");
-            }
-        }).catch((error) => {
-            console.warn("Firebase Analytics não pôde ser inicializado:", error);
-        });
-    </script>
+  window.saveTopicToCloud = async function(topicId, data) {
+    await setDoc(doc(db, "modulos", topicId), data, { merge: true });
+  };
+
+  window.loadTopicFromCloud = async function(topicId) {
+    const docRef = doc(db, "modulos", topicId);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? docSnap.data() : null;
+  };
+
+  window.firebaseDB = db;
+  console.log("Firebase Firestore inicializado.");
+</script>
+
+
+<script>
+(function () {
+  function cloudTopicAvailable() {
+    return typeof window.saveTopicToCloud === "function" &&
+           typeof window.loadTopicFromCloud === "function";
+  }
+
+  // Expose a safe helper so the existing application can opt into cloud sync
+  // without breaking if Firebase is unavailable/offline.
+  window.syncTopicWithCloud = async function(topicId, data) {
+    if (!cloudTopicAvailable()) return false;
+    try {
+      await window.saveTopicToCloud(topicId, data);
+      return true;
+    } catch (error) {
+      console.warn("Não foi possível salvar o módulo no Firestore:", error);
+      return false;
+    }
+  };
+
+  window.getTopicFromCloud = async function(topicId) {
+    if (!cloudTopicAvailable()) return null;
+    try {
+      return await window.loadTopicFromCloud(topicId);
+    } catch (error) {
+      console.warn("Não foi possível carregar o módulo do Firestore:", error);
+      return null;
+    }
+  };
+})();
+</script>
 
 </body>
 </html>
