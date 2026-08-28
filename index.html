@@ -55,48 +55,6 @@
         .ql-container { border-radius: 0 0 0.5rem 0.5rem; background-color: #ffffff; }
         .dark .ql-container { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
     </style>
-
-<script>
-document.addEventListener('paste', function (event) {
-    const target = event.target;
-    if (!target) return;
-
-    // Atua no editor Quill da teoria. Para textareas/input de questões,
-    // o navegador já mantém símbolos Unicode normalmente.
-    const editor = target.closest && target.closest('#quill-editor-topic');
-    if (!editor) return;
-
-    const clip = event.clipboardData || window.clipboardData;
-    if (!clip) return;
-
-    const plain = clip.getData('text/plain');
-    if (!plain) return;
-
-    const normalized = window.normalizeSymbolTokens
-        ? window.normalizeSymbolTokens(plain)
-        : plain;
-
-    if (normalized === plain) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    // Insere texto puro já normalizado na posição atual.
-    const quill = window.quillTopicEditor;
-    if (quill) {
-        const range = quill.getSelection(true);
-        if (range) {
-            quill.insertText(range.index, normalized, 'user');
-            quill.setSelection(range.index + normalized.length, 0, 'silent');
-        } else {
-            quill.insertText(quill.getLength() - 1, normalized, 'user');
-        }
-    } else {
-        document.execCommand('insertText', false, normalized);
-    }
-}, true);
-</script>
-
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
 
@@ -488,130 +446,11 @@ document.addEventListener('paste', function (event) {
     </div>
 
     <!-- JAVASCRIPT & ENGINE DE DADOS -->
-    
-<script>
-(function () {
-    // Normaliza nomes de símbolos que IAs/editor podem entregar como <token>.
-    // É aplicado somente no conteúdo colado/editado; não altera o restante do site.
-    const SYMBOL_TOKENS = {
-        // Conjuntos numéricos
-        "naturals":"ℕ", "natural":"ℕ", "n":"ℕ", "mathbb-n":"ℕ", "mathbbn":"ℕ",
-        "integers":"ℤ", "integer":"ℤ", "mathbb-z":"ℤ", "mathbbz":"ℤ",
-        "rationals":"ℚ", "rational":"ℚ", "mathbb-q":"ℚ", "mathbbq":"ℚ",
-        "reals":"ℝ", "real":"ℝ", "mathbb-r":"ℝ", "mathbbr":"ℝ",
-        "irrationals":"𝕀", "irrational":"𝕀",
-        "complex":"ℂ", "complexes":"ℂ", "mathbb-c":"ℂ", "mathbbc":"ℂ",
-
-        // Relações e lógica
-        "in":"∈", "not-in":"∉", "notin":"∉", "belongs-to":"∈",
-        "subset":"⊂", "proper-subset":"⊂", "subseteq":"⊆", "subset-or-equal":"⊆",
-        "superset":"⊃", "supseteq":"⊇", "superset-or-equal":"⊇",
-        "not-subset":"⊄", "not-subseteq":"⊈", "not-superset":"⊅",
-        "equal":"=", "neq":"≠", "not-equal":"≠", "approx":"≈",
-        "equiv":"≡", "congruent":"≅", "proportional":"∝",
-        "less-than":"<", "greater-than":">", "le":"≤", "leq":"≤",
-        "ge":"≥", "geq":"≥", "much-less":"≪", "much-greater":"≫",
-
-        // Set/logic
-        "empty-set":"∅", "empty":"∅", "union":"∪", "intersection":"∩",
-        "cap":"∩", "cup":"∪", "setminus":"∖", "difference":"∖",
-        "forall":"∀", "exists":"∃", "not-exists":"∄",
-        "therefore":"∴", "because":"∵", "and":"∧", "or":"∨",
-        "not":"¬", "implies":"⇒", "if-and-only-if":"⇔", "iff":"⇔",
-        "right-double-arrow":"⇒", "left-double-arrow":"⇐", "double-arrow":"⇔",
-
-        // Set theory / functions
-        "element-of":"∈", "contains":"∋", "not-contains":"∌",
-        "power-set":"𝒫", "powerset":"𝒫",
-        "function":"ƒ", "composition":"∘",
-
-        // Arrows
-        "right-arrow":"→", "left-arrow":"←", "up-arrow":"↑", "down-arrow":"↓",
-        "up-right-arrow":"↗", "up-left-arrow":"↖", "down-right-arrow":"↘", "down-left-arrow":"↙",
-        "left-right-arrow":"↔", "right-left-arrow":"↔",
-        "long-right-arrow":"⟶", "long-left-arrow":"⟵", "long-left-right-arrow":"⟷",
-        "right-double-arrow":"⇒", "left-double-arrow":"⇐",
-        "double-right-arrow":"⇒", "double-left-arrow":"⇐",
-        "double-left-right-arrow":"⇔", "iff-arrow":"⇔",
-
-        // Common math operators
-        "infinity":"∞", "inf":"∞", "plus-minus":"±", "pm":"±",
-        "minus-plus":"∓", "mp":"∓", "times":"×", "multiply":"×",
-        "divide":"÷", "degree":"°", "angle":"∠", "perpendicular":"⊥",
-        "parallel":"∥", "triangle":"△", "square":"□", "circle":"○",
-        "dot":"·", "cdot":"·", "dots":"…", "ellipsis":"…",
-        "ldots":"…", "cdots":"⋯", "vdots":"⋮", "ddots":"⋱",
-        "there-is":"∃", "sum":"∑", "product":"∏",
-        "sqrt":"√", "integral":"∫", "partial":"∂", "nabla":"∇",
-        "delta":"Δ", "capital-delta":"Δ", "theta":"θ", "alpha":"α", "beta":"β",
-        "gamma":"γ", "lambda":"λ", "mu":"μ", "pi":"π", "sigma":"σ",
-        "omega":"ω", "phi":"φ", "rho":"ρ", "tau":"τ",
-
-        // Common Greek uppercase
-        "capital-alpha":"Α", "capital-beta":"Β", "capital-gamma":"Γ",
-        "capital-theta":"Θ", "capital-lambda":"Λ", "capital-pi":"Π",
-        "capital-sigma":"Σ", "capital-phi":"Φ", "capital-psi":"Ψ",
-        "capital-omega":"Ω",
-
-        // Fractions / comparison text tokens
-        "half":"½", "quarter":"¼", "three-quarters":"¾",
-        "one-half":"½", "one-quarter":"¼", "three-quarter":"¾"
-    };
-
-    function normalizeSymbolTokens(value) {
-        if (!value) return value;
-
-        // Decodifica entidades HTML antes de procurar tokens.
-        let s = value.replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&amp;/gi, "&");
-
-        // <right-arrow>, <naturals>, etc.
-        s = s.replace(/<\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*>/g, function (m, key) {
-            const k = key.toLowerCase();
-            return Object.prototype.hasOwnProperty.call(SYMBOL_TOKENS, k)
-                ? SYMBOL_TOKENS[k] : m;
-        });
-
-        // [right-arrow] e {right-arrow}, formatos que algumas IAs usam.
-        s = s.replace(/[\[\{]\s*([a-zA-Z][a-zA-Z0-9_-]*)\s*[\]\}]/g, function (m, key) {
-            const k = key.toLowerCase();
-            return Object.prototype.hasOwnProperty.call(SYMBOL_TOKENS, k)
-                ? SYMBOL_TOKENS[k] : m;
-        });
-
-        // Nomes com barra invertida vindos de IA: \mathbb{N}, \mathbb N etc.
-        s = s.replace(/\\mathbb\s*\{\s*([NZQRC])\s*\}/g, function (_, c) {
-            return ({N:"ℕ", Z:"ℤ", Q:"ℚ", R:"ℝ", C:"ℂ"})[c] || _;
-        });
-
-        // Comandos LaTeX isolados que deveriam ser símbolo visual fora de fórmula.
-        const latex = {
-            "\\in":"∈", "\\notin":"∉", "\\subset":"⊂", "\\subseteq":"⊆",
-            "\\supset":"⊃", "\\supseteq":"⊇", "\\cup":"∪", "\\cap":"∩",
-            "\\emptyset":"∅", "\\varnothing":"∅", "\\infty":"∞",
-            "\\le":"≤", "\\leq":"≤", "\\ge":"≥", "\\geq":"≥",
-            "\\neq":"≠", "\\ne":"≠", "\\approx":"≈", "\\pm":"±",
-            "\\times":"×", "\\cdot":"·", "\\to":"→", "\\rightarrow":"→",
-            "\\leftarrow":"←", "\\leftrightarrow":"↔", "\\Rightarrow":"⇒",
-            "\\Leftarrow":"⇐", "\\Leftrightarrow":"⇔", "\\forall":"∀",
-            "\\exists":"∃", "\\therefore":"∴", "\\ldots":"…", "\\cdots":"⋯"
-        };
-        Object.keys(latex).forEach(function (k) {
-            s = s.split(k).join(latex[k]);
-        });
-
-        return s;
-    }
-
-    // Disponibiliza para o restante do arquivo, caso já exista um manipulador de paste.
-    window.normalizeSymbolTokens = normalizeSymbolTokens;
-    window.SYMBOL_TOKENS = SYMBOL_TOKENS;
-})();
-</script>
-
-<script>
+    <script>
         // ESTADO GLOBAL
         let currentUser = JSON.parse(localStorage.getItem('ctrb_user')) || { role: 'visitante', name: 'Visitante' };
         let registeredStudents = JSON.parse(localStorage.getItem('ctrb_students_db')) || [];
+        window.registeredStudents = registeredStudents;
         let sheetsLink = localStorage.getItem('ctrb_sheets_link') || 'https://docs.google.com/spreadsheets';
         
         let tabLabels = JSON.parse(localStorage.getItem('ctrb_tab_labels')) || {
@@ -777,14 +616,23 @@ document.addEventListener('paste', function (event) {
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initDefaultQuestions();
             syncStudentProgression();
             applySavedTheme();
             updateUserUI();
             renderSidebarNav();
             initQuillEditor();
-            
+
+            // Carrega os alunos da nuvem antes de abrir o painel do professor.
+            if (window.loadStudentsFromCloud) {
+                try {
+                    await window.loadStudentsFromCloud();
+                } catch (error) {
+                    console.warn('Falha ao carregar alunos do Firestore; usando dados locais.', error);
+                }
+            }
+
             if (currentMainTab === 'professor' && currentUser.role !== 'admin') {
                 currentMainTab = 'edital';
             }
@@ -793,57 +641,6 @@ document.addEventListener('paste', function (event) {
 
         function handleLogoClick() {
             switchMainTab('edital');
-        }
-
-
-        // PROTEÇÃO DO CONTEÚDO EDITÁVEL
-        // Mantém símbolos/fórmulas colados da IA como texto real, evitando que
-        // sequências como <right-arrow> sejam interpretadas pelo HTML/Quill.
-        function normalizeSpecialTokens(value) {
-            if (value === null || value === undefined) return '';
-            let text = String(value);
-
-            // Tokens usados por algumas IAs para representar símbolos.
-            // A substituição ocorre ANTES de qualquer interpretação como HTML.
-            const tokenMap = {
-                'right-arrow': '→', 'left-arrow': '←', 'up-arrow': '↑', 'down-arrow': '↓',
-                'double-right-arrow': '⇒', 'double-left-arrow': '⇐',
-                'right-double-arrow': '⇒', 'left-double-arrow': '⇐',
-                'iff': '⇔', 'implies': '⇒', 'therefore': '∴', 'because': '∵',
-                'infinity': '∞', 'empty-set': '∅', 'emptyset': '∅', 'times': '×',
-                'bullet': '•', 'dot': '·', 'dots': '…', 'ellipsis': '…',
-                'le': '≤', 'ge': '≥', 'neq': '≠', 'approx': '≈', 'pm': '±', 'degree': '°',
-                'check': '✓', 'cross': '✗', 'right-pointing-arrow': '→',
-                'left-pointing-arrow': '←', 'long-right-arrow': '⟶', 'long-left-arrow': '⟵'
-            };
-
-            Object.keys(tokenMap).forEach(name => {
-                const symbol = tokenMap[name];
-                // Aceita <token>, &lt;token&gt;, [token] e {{token}},
-                // independentemente de maiúsculas/minúsculas.
-                const forms = [
-                    new RegExp('(?:<|&lt;|\\?\\[|\\{\\{)\\s*' + name.replace(/[-]/g, '[-\\s_]') + '\\s*(?:>|&gt;|\\]|\\}\\})', 'gi'),
-                    new RegExp('\\\\' + name + '\\b', 'gi')
-                ];
-                forms.forEach(re => { text = text.replace(re, symbol); });
-            });
-
-            return text;
-        }
-
-        function escapeHtmlContent(value) {
-            const normalized = normalizeSpecialTokens(value);
-            return normalized
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-
-        function normalizeTheoryHtml(value) {
-            if (!value) return '';
-            return normalizeSpecialTokens(value);
         }
 
         function initQuillEditor() {
@@ -861,37 +658,6 @@ document.addEventListener('paste', function (event) {
                         ]
                     }
                 });
-
-                // Ao colar, converte o conteúdo para texto antes de o Quill
-                // interpretar tags pseudo-HTML como <right-arrow>, <dots>, etc.
-                quillTopicEditor.clipboard.addMatcher(Node.ELEMENT_NODE, (node, delta) => {
-                    return delta;
-                });
-                quillTopicEditor.root.addEventListener('paste', (event) => {
-                    // CAPTURE=true é essencial: o Quill possui seu próprio manipulador
-                    // de paste e, sem captura, ele pode interpretar <right-arrow>,
-                    // <dots>, <infinity> etc. como tags HTML antes deste código.
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    const clipboard = event.clipboardData;
-                    if (!clipboard) return;
-
-                    const html = clipboard.getData('text/html');
-                    const plain = clipboard.getData('text/plain') || '';
-                    const range = quillTopicEditor.getSelection(true) || { index: quillTopicEditor.getLength(), length: 0 };
-
-                    if (html) {
-                        // Corrige tokens pseudo-HTML ANTES de o navegador/Quill os interpretar.
-                        const safeHtml = normalizeSpecialTokens(html);
-                        quillTopicEditor.deleteText(range.index, range.length, 'user');
-                        quillTopicEditor.clipboard.dangerouslyPasteHTML(range.index, safeHtml, 'user');
-                    } else {
-                        const safeText = normalizeSpecialTokens(plain);
-                        quillTopicEditor.deleteText(range.index, range.length, 'user');
-                        quillTopicEditor.insertText(range.index, safeText, 'user');
-                    }
-                }, true);
             }
         }
 
@@ -1077,15 +843,30 @@ document.addEventListener('paste', function (event) {
             renderMainContent();
         }
 
-        function handleStudentRegister(e) {
+        async function handleStudentRegister(e) {
             e.preventDefault();
             const name = document.getElementById('reg-student-name').value.trim();
-            const email = document.getElementById('reg-student-email').value.trim();
+            const email = document.getElementById('reg-student-email').value.trim().toLowerCase();
             const pass = document.getElementById('reg-student-pass').value.trim();
 
-            if (!registeredStudents.some(s => s.email === email)) {
-                registeredStudents.push({ name, email, pass, role: 'aluno' });
-                localStorage.setItem('ctrb_students_db', JSON.stringify(registeredStudents));
+            const student = { name, email, pass, role: 'aluno' };
+            const existing = registeredStudents.find(s => s.email === email);
+
+            if (!existing) {
+                registeredStudents.push(student);
+            } else {
+                Object.assign(existing, student);
+            }
+            localStorage.setItem('ctrb_students_db', JSON.stringify(registeredStudents));
+
+            // Salva imediatamente no Firestore para que o aluno apareça em qualquer dispositivo.
+            if (window.saveStudentToCloud) {
+                try {
+                    await window.saveStudentToCloud(student);
+                } catch (error) {
+                    console.error('Cadastro local realizado, mas falhou o salvamento no Firestore:', error);
+                    alert('Cadastro realizado neste dispositivo, mas não foi possível sincronizar com a nuvem. Verifique as regras do Firestore.');
+                }
             }
 
             syncStudentProgression();
@@ -1234,7 +1015,7 @@ document.addEventListener('paste', function (event) {
                                     <i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo
                                 </h3>
                                 <div class="prose dark:prose-invert max-w-none text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                                    ${normalizeTheoryHtml(topic.theory)}
+                                    ${topic.theory}
                                 </div>
                             </div>
 
@@ -1283,12 +1064,12 @@ document.addEventListener('paste', function (event) {
                                             </div>
                                         ` : ''}
                                     </div>
-                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${escapeHtmlContent(q.statement)}</p>
+                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
                                     <div class="space-y-2 pl-1">
                                         ${q.options.map((opt, optIdx) => `
                                             <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
                                                 <input type="radio" name="opt_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
-                                                <span>${escapeHtmlContent(opt)}</span>
+                                                <span>${opt}</span>
                                             </label>
                                         `).join('')}
                                     </div>
@@ -1548,11 +1329,11 @@ document.addEventListener('paste', function (event) {
                         <i class="fa-solid fa-circle-check text-base"></i> Resposta Correta! (Registrado no Desempenho)
                     </div>
                     <div class="mb-2 font-semibold">
-                        Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${escapeHtmlContent(correctText)}
+                        Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}
                     </div>
                     <div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60">
                         <span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação da Resposta:</span>
-                        <p class="leading-relaxed font-medium">${escapeHtmlContent(motivation)}</p>
+                        <p class="leading-relaxed font-medium">${motivation}</p>
                     </div>
                 `;
             } else {
@@ -1563,11 +1344,11 @@ document.addEventListener('paste', function (event) {
                         <i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!
                     </div>
                     <div class="mb-2 font-semibold">
-                        Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${escapeHtmlContent(correctText)}
+                        Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}
                     </div>
                     <div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60">
                         <span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação da Resposta:</span>
-                        <p class="leading-relaxed font-medium">${escapeHtmlContent(motivation)}</p>
+                        <p class="leading-relaxed font-medium">${motivation}</p>
                     </div>
                 `;
             }
@@ -1642,14 +1423,14 @@ document.addEventListener('paste', function (event) {
             const qId = document.getElementById('q-edit-id').value;
 
             const difficulty = document.getElementById('q-edit-difficulty').value;
-            const statement = normalizeSpecialTokens(document.getElementById('q-edit-statement').value.trim());
-            const opt0 = normalizeSpecialTokens(document.getElementById('q-edit-opt0').value.trim());
-            const opt1 = normalizeSpecialTokens(document.getElementById('q-edit-opt1').value.trim());
-            const opt2 = normalizeSpecialTokens(document.getElementById('q-edit-opt2').value.trim());
-            const opt3 = normalizeSpecialTokens(document.getElementById('q-edit-opt3').value.trim());
-            const opt4 = normalizeSpecialTokens(document.getElementById('q-edit-opt4').value.trim());
+            const statement = document.getElementById('q-edit-statement').value.trim();
+            const opt0 = document.getElementById('q-edit-opt0').value.trim();
+            const opt1 = document.getElementById('q-edit-opt1').value.trim();
+            const opt2 = document.getElementById('q-edit-opt2').value.trim();
+            const opt3 = document.getElementById('q-edit-opt3').value.trim();
+            const opt4 = document.getElementById('q-edit-opt4').value.trim();
             const correct = parseInt(document.getElementById('q-edit-correct').value);
-            const explanation = normalizeSpecialTokens(document.getElementById('q-edit-explanation').value.trim());
+            const explanation = document.getElementById('q-edit-explanation').value.trim();
 
             const isNew = !qId;
             const questionData = {
@@ -1719,7 +1500,7 @@ document.addEventListener('paste', function (event) {
             const id = document.getElementById('edit-topic-id').value;
             const title = document.getElementById('edit-topic-title').value.trim();
             const yt = document.getElementById('edit-topic-yt').value.trim();
-            const content = quillTopicEditor ? normalizeTheoryHtml(quillTopicEditor.root.innerHTML) : '';
+            const content = quillTopicEditor ? quillTopicEditor.root.innerHTML : '';
 
             const idx = topicsData.findIndex(item => item.id === id);
             if (idx !== -1) {
@@ -1841,7 +1622,7 @@ document.addEventListener('paste', function (event) {
                     <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
                         <div>
                             <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Caderno de Prova</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">${escapeHtmlContent(currentSimulado.title)}</h2>
+                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">${currentSimulado.title}</h2>
                         </div>
                         <span class="text-xs font-black bg-amber-500 text-slate-950 px-3 py-1 rounded-lg">${currentSimulado.questions.length} Questões</span>
                     </div>
@@ -1852,12 +1633,12 @@ document.addEventListener('paste', function (event) {
                                 <div class="flex items-center gap-2">
                                     <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1}</span>
                                 </div>
-                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${escapeHtmlContent(q.statement)}</p>
+                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
                                 <div class="space-y-2 pl-1">
                                     ${q.options.map((opt, optIdx) => `
                                         <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
                                             <input type="radio" name="opt_sim_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
-                                            <span>${escapeHtmlContent(opt)}</span>
+                                            <span>${opt}</span>
                                         </label>
                                     `).join('')}
                                 </div>
@@ -2162,11 +1943,10 @@ document.addEventListener('paste', function (event) {
             alert('Meta adicionada ao cronograma do aluno com sucesso!');
         }
     </script>
-
-<!-- FIREBASE + FIRESTORE: integração para GitHub Pages -->
+<!-- FIREBASE + FIRESTORE -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, getDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBlKg8Uq7PqRqDIeZWe5dDULrBzutRqyFY",
@@ -2180,52 +1960,66 @@ document.addEventListener('paste', function (event) {
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  window.firebaseApp = app;
+  window.firebaseDB = db;
 
+  // Cada aluno fica em um documento próprio. O e-mail é usado apenas como ID técnico.
+  const studentDocId = (email) => encodeURIComponent(String(email || '').trim().toLowerCase());
+
+  window.saveStudentToCloud = async function(student) {
+    if (!student || !student.email) throw new Error('Aluno sem e-mail.');
+    await setDoc(doc(db, 'alunos', studentDocId(student.email)), {
+      name: student.name || '',
+      email: student.email.trim().toLowerCase(),
+      pass: student.pass || '',
+      role: 'aluno',
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  };
+
+  window.loadStudentsFromCloud = async function() {
+    const snap = await getDocs(collection(db, 'alunos'));
+    const cloudStudents = [];
+    snap.forEach(d => {
+      const data = d.data();
+      if (data && data.email) cloudStudents.push({
+        name: data.name || '', email: String(data.email).toLowerCase(),
+        pass: data.pass || '', role: 'aluno'
+      });
+    });
+
+    // Mescla nuvem + dados locais, preservando cadastros antigos.
+    const byEmail = new Map();
+    (Array.isArray(window.registeredStudents) ? window.registeredStudents : []).forEach(s => {
+      if (s && s.email) byEmail.set(String(s.email).toLowerCase(), s);
+    });
+    cloudStudents.forEach(s => byEmail.set(s.email, s));
+
+    if (Array.isArray(window.registeredStudents)) {
+      window.registeredStudents.length = 0;
+      window.registeredStudents.push(...Array.from(byEmail.values()));
+      localStorage.setItem('ctrb_students_db', JSON.stringify(window.registeredStudents));
+    }
+
+    // Migra automaticamente os alunos que só existiam no localStorage.
+    const localOnly = Array.from(byEmail.values()).filter(s => !cloudStudents.some(c => c.email === String(s.email).toLowerCase()));
+    for (const student of localOnly) {
+      try { await window.saveStudentToCloud(student); } catch (e) { console.warn('Falha ao migrar aluno:', student.email, e); }
+    }
+    return window.registeredStudents || [];
+  };
+
+  // Funções de módulos/teoria mantidas para a integração já existente.
   window.saveTopicToCloud = async function(topicId, data) {
     await setDoc(doc(db, "modulos", topicId), data, { merge: true });
   };
 
   window.loadTopicFromCloud = async function(topicId) {
-    const docRef = doc(db, "modulos", topicId);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? docSnap.data() : null;
+    const snap = await getDoc(doc(db, "modulos", topicId));
+    return snap.exists() ? snap.data() : null;
   };
 
-  window.firebaseDB = db;
-  console.log("Firebase Firestore inicializado.");
-</script>
-
-
-<script>
-(function () {
-  function cloudTopicAvailable() {
-    return typeof window.saveTopicToCloud === "function" &&
-           typeof window.loadTopicFromCloud === "function";
-  }
-
-  // Expose a safe helper so the existing application can opt into cloud sync
-  // without breaking if Firebase is unavailable/offline.
-  window.syncTopicWithCloud = async function(topicId, data) {
-    if (!cloudTopicAvailable()) return false;
-    try {
-      await window.saveTopicToCloud(topicId, data);
-      return true;
-    } catch (error) {
-      console.warn("Não foi possível salvar o módulo no Firestore:", error);
-      return false;
-    }
-  };
-
-  window.getTopicFromCloud = async function(topicId) {
-    if (!cloudTopicAvailable()) return null;
-    try {
-      return await window.loadTopicFromCloud(topicId);
-    } catch (error) {
-      console.warn("Não foi possível carregar o módulo do Firestore:", error);
-      return null;
-    }
-  };
-})();
+  console.log('Firebase Firestore inicializado.');
 </script>
 
 </body>
