@@ -1442,7 +1442,7 @@
             document.getElementById('edit-question-modal').classList.add('hidden');
         }
 
-        function saveQuestionChanges(e) {
+        async function saveQuestionChanges(e) {
             e.preventDefault();
             const targetTopicId = document.getElementById('q-edit-target-topic').value;
             const originalTopicId = document.getElementById('q-edit-topic-id').value;
@@ -1490,16 +1490,39 @@
             }
 
             localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
+            if (window.saveQuestionToCloud) {
+                try {
+                    // Primeiro grava a nova versão. Só depois remove a cópia antiga,
+                    // evitando deixar a questão sem cópia na nuvem se houver falha.
+                    await window.saveQuestionToCloud(questionData);
+                    if (!isNew && originalTopicId && originalTopicId !== targetTopicId && window.deleteQuestionFromCloud) {
+                        await window.deleteQuestionFromCloud(qId);
+                    }
+                } catch (err) {
+                    console.error('Falha ao sincronizar questão com o Firestore:', err);
+                    alert('A questão foi salva neste dispositivo, mas não foi sincronizada com a nuvem. Verifique a conexão com o Firebase.');
+                    return;
+                }
+            }
             closeEditQuestionModal();
             renderMainContent();
-            alert('Questão salva com sucesso!');
+            alert('Questão salva e sincronizada com sucesso!');
         }
 
-        function deleteQuestion(topicId, qId) {
+        async function deleteQuestion(topicId, qId) {
             if (confirm('Deseja realmente excluir esta questão?')) {
                 if (masterQuestions[topicId]) {
                     masterQuestions[topicId] = masterQuestions[topicId].filter(q => q.id !== qId);
                     localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
+                    if (window.deleteQuestionFromCloud) {
+                        try {
+                            await window.deleteQuestionFromCloud(qId);
+                        } catch (err) {
+                            console.error('Falha ao excluir questão do Firestore:', err);
+                            alert('A questão foi removida localmente, mas não foi possível removê-la da nuvem.');
+                            return;
+                        }
+                    }
                     renderMainContent();
                 }
             }
@@ -1521,7 +1544,7 @@
             document.getElementById('edit-topic-modal').classList.add('hidden');
         }
 
-        function saveTopicChanges(e) {
+        async function saveTopicChanges(e) {
             e.preventDefault();
             const id = document.getElementById('edit-topic-id').value;
             const title = document.getElementById('edit-topic-title').value.trim();
@@ -1534,12 +1557,21 @@
                 topicsData[idx].ytVideoId = yt;
                 topicsData[idx].theory = content;
                 localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
+                if (window.saveTopicToCloud) {
+                    try {
+                        await window.saveTopicToCloud(id, topicsData[idx]);
+                    } catch (err) {
+                        console.error('Falha ao sincronizar módulo com o Firestore:', err);
+                        alert('O módulo foi salvo neste dispositivo, mas não foi sincronizado com a nuvem. Verifique a conexão com o Firebase.');
+                        return;
+                    }
+                }
             }
 
             closeEditTopicModal();
             renderSidebarNav();
             renderMainContent();
-            alert('Módulo atualizado com sucesso!');
+            alert('Módulo atualizado e sincronizado em tempo real!');
         }
 
         function openEditTabsModal() {
@@ -1558,7 +1590,7 @@
             document.getElementById('edit-tabs-modal').classList.add('hidden');
         }
 
-        function saveCustomTabs(e) {
+        async function saveCustomTabs(e) {
             e.preventDefault();
             tabLabels.edital = document.getElementById('tab-label-edital').value.trim();
             tabLabels.teoria = document.getElementById('tab-label-teoria').value.trim();
@@ -1570,9 +1602,18 @@
             tabLabels.desempenho = document.getElementById('tab-label-desempenho').value.trim();
 
             localStorage.setItem('ctrb_tab_labels', JSON.stringify(tabLabels));
+            if (window.savePublicConfigToCloud) {
+                try {
+                    await window.savePublicConfigToCloud({ tabLabels });
+                } catch (err) {
+                    console.error('Falha ao sincronizar rótulos das abas:', err);
+                    alert('Os rótulos foram salvos neste dispositivo, mas não foram sincronizados com a nuvem.');
+                    return;
+                }
+            }
             closeEditTabsModal();
             updateUserUI();
-            alert('Rótulos de navegação atualizados com sucesso!');
+            alert('Rótulos de navegação atualizados e sincronizados em tempo real!');
         }
 
         function openSimuladoModal() {
@@ -1973,11 +2014,12 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, getDoc, getDocs, setDoc, onSnapshot
+    getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
+    onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyBlKg8Uq7PqRqDIeZWe5dDULrBzutRqyFY",
+    apiKey: "AIzaSyBlKgU8q7PqRqDIeZWe5dDULrBzutRqyFY",
     authDomain: "shinji-protocol.firebaseapp.com",
     projectId: "shinji-protocol",
     storageBucket: "shinji-protocol.firebasestorage.app",
@@ -1994,10 +2036,14 @@
   const studentDocId = (email) =>
     encodeURIComponent(String(email || '').trim().toLowerCase());
 
+  const safeDocId = (id) =>
+    encodeURIComponent(String(id || '').trim());
+
   const nowISO = () => new Date().toISOString();
 
-  // O Firestore passa a armazenar também o desempenho e o cronograma.
-  // localStorage continua somente como cache/offline.
+  /* ============================================================
+     ALUNOS
+     ============================================================ */
   window.saveStudentToCloud = async function(student) {
     if (!student || !student.email) throw new Error('Aluno sem e-mail.');
 
@@ -2076,9 +2122,8 @@
     }
 
     if (typeof syncStudentProgression === 'function') syncStudentProgression();
-
     return window.registeredStudents || [];
-  }
+  };
 
   window.loadStudentsFromCloud = async function() {
     const snap = await getDocs(collection(db, 'alunos'));
@@ -2102,12 +2147,11 @@
       cloudByEmail.set(email, student);
     });
 
-    // Migração segura: só envia dados locais quando o documento da nuvem
-    // ainda não possui aquele dado. Assim, progresso mais recente da nuvem
-    // nunca é substituído pelo cache antigo deste dispositivo.
     const localStudents = Array.isArray(window.registeredStudents)
       ? [...window.registeredStudents] : [];
 
+    // Migração somente quando o registro ainda não existe na nuvem.
+    // Nunca substitui conteúdo mais novo do Firestore por cache antigo.
     for (const localStudent of localStudents) {
       const email = String(localStudent.email || '').trim().toLowerCase();
       if (!email) continue;
@@ -2144,10 +2188,7 @@
     return window.registeredStudents || [];
   };
 
-  // Listener em tempo real: alterações feitas pelo aluno chegam ao professor
-  // sem reload e alterações feitas pelo professor chegam ao aluno.
   let unsubscribeStudents = null;
-
   window.startStudentsRealtime = function() {
     if (unsubscribeStudents) return;
 
@@ -2161,24 +2202,215 @@
         });
         applyCloudStudents(students);
       },
-      error => {
-        console.error('Erro no listener em tempo real do Firestore:', error);
-      }
+      error => console.error('Erro no listener de alunos:', error)
     );
   };
 
+  /* ============================================================
+     CONTEÚDO PÚBLICO — FONTE CENTRAL
+
+     Firestore:
+       modulos/{topicId}      -> teoria + vídeo + título
+       questoes/{questionId}  -> cada questão individual
+       configuracoes/publico  -> rótulos das abas
+
+     localStorage permanece apenas como cache/offline.
+     ============================================================ */
+
   window.saveTopicToCloud = async function(topicId, data) {
-    await setDoc(doc(db, "modulos", topicId), data, { merge: true });
+    if (!topicId || !data) return;
+    await setDoc(doc(db, 'modulos', safeDocId(topicId)), {
+      ...data,
+      id: topicId,
+      updatedAt: nowISO()
+    }, { merge: true });
   };
 
-  window.loadTopicFromCloud = async function(topicId) {
-    const snap = await getDoc(doc(db, "modulos", topicId));
-    return snap.exists() ? snap.data() : null;
+  window.saveQuestionToCloud = async function(questionData) {
+    if (!questionData || !questionData.id) throw new Error('Questão sem ID.');
+    await setDoc(doc(db, 'questoes', safeDocId(questionData.id)), {
+      ...questionData,
+      updatedAt: nowISO()
+    }, { merge: true });
   };
 
+  window.deleteQuestionFromCloud = async function(questionId) {
+    if (!questionId) return;
+    await deleteDoc(doc(db, 'questoes', safeDocId(questionId)));
+  };
+
+  window.savePublicConfigToCloud = async function(config) {
+    await setDoc(doc(db, 'configuracoes', 'publico'), {
+      ...config,
+      updatedAt: nowISO()
+    }, { merge: true });
+  };
+
+  async function migratePublicContentIfCloudIsEmpty() {
+    // ---------- MÓDULOS ----------
+    const topicSnap = await getDocs(collection(db, 'modulos'));
+    const cloudTopicIds = new Set(topicSnap.docs.map(d => d.id));
+
+    if (Array.isArray(topicsData)) {
+      for (const topic of topicsData) {
+        const id = safeDocId(topic.id);
+        if (!cloudTopicIds.has(id)) {
+          await window.saveTopicToCloud(topic.id, topic);
+        }
+      }
+    }
+
+    // ---------- QUESTÕES ----------
+    const questionSnap = await getDocs(collection(db, 'questoes'));
+    const cloudQuestionIds = new Set(questionSnap.docs.map(d => d.id));
+
+    if (typeof masterQuestions !== 'undefined' && masterQuestions) {
+      for (const [topicId, list] of Object.entries(masterQuestions)) {
+        for (const q of (Array.isArray(list) ? list : [])) {
+          const id = safeDocId(q.id);
+          if (!cloudQuestionIds.has(id)) {
+            await window.saveQuestionToCloud({
+              ...q,
+              topicId: q.topicId || topicId
+            });
+          }
+        }
+      }
+    }
+
+    // ---------- CONFIGURAÇÃO DAS ABAS ----------
+    const configRef = doc(db, 'configuracoes', 'publico');
+    const configSnap = await getDoc(configRef);
+
+    if (!configSnap.exists() && typeof tabLabels !== 'undefined') {
+      await window.savePublicConfigToCloud({ tabLabels });
+    }
+  }
+
+  function applyCloudTopics(topicDocs) {
+    const cloudTopics = topicDocs
+      .map(d => ({ id: d.id, ...(d.data() || {}) }))
+      .filter(t => t.id);
+
+    if (!cloudTopics.length) return;
+
+    const localById = new Map((Array.isArray(topicsData) ? topicsData : []).map(t => [t.id, t]));
+    cloudTopics.forEach(t => localById.set(t.id, { ...localById.get(t.id), ...t }));
+
+    // Mantém a ordem original do HTML e acrescenta novos módulos no final.
+    const currentOrder = Array.isArray(topicsData) ? topicsData : [];
+    const result = [];
+    currentOrder.forEach(t => {
+      if (localById.has(t.id)) result.push(localById.get(t.id));
+    });
+    cloudTopics.forEach(t => {
+      if (!currentOrder.some(x => x.id === t.id)) result.push(t);
+    });
+
+    // Atualiza o mesmo array usado pelo site, sem alterar a estrutura visual.
+    if (Array.isArray(topicsData)) {
+      topicsData.length = 0;
+      topicsData.push(...result);
+    }
+
+    localStorage.setItem('ctrb_topics_data', JSON.stringify(result));
+
+    if (typeof currentSubTopicId !== 'undefined' &&
+        !result.some(t => t.id === currentSubTopicId) &&
+        result.length) {
+      currentSubTopicId = result[0].id;
+    }
+
+    if (typeof renderSidebarNav === 'function') renderSidebarNav();
+    if (typeof renderMainContent === 'function') renderMainContent();
+  }
+
+  function applyCloudQuestions(questionDocs) {
+    const grouped = {};
+
+    questionDocs.forEach(d => {
+      const q = { id: d.id, ...(d.data() || {}) };
+      if (!q.topicId) return;
+      if (!grouped[q.topicId]) grouped[q.topicId] = [];
+      grouped[q.topicId].push(q);
+    });
+
+    // Se a coleção existe na nuvem, ela passa a ser a fonte oficial.
+    if (questionDocs.length > 0) {
+      if (typeof masterQuestions !== 'undefined') {
+        masterQuestions = grouped;
+      }
+      localStorage.setItem('ctrb_questions_data', JSON.stringify(grouped));
+    }
+
+    if (typeof renderMainContent === 'function') renderMainContent();
+  }
+
+  function applyCloudConfig(data) {
+    if (!data || !data.tabLabels) return;
+
+    if (typeof tabLabels !== 'undefined') {
+      Object.assign(tabLabels, data.tabLabels);
+      localStorage.setItem('ctrb_tab_labels', JSON.stringify(tabLabels));
+    }
+
+    if (typeof updateUserUI === 'function') updateUserUI();
+    if (typeof renderMainContent === 'function') renderMainContent();
+  }
+
+  let unsubscribeTopics = null;
+  let unsubscribeQuestions = null;
+  let unsubscribePublicConfig = null;
+
+  window.startPublicContentRealtime = function() {
+    if (!unsubscribeTopics) {
+      unsubscribeTopics = onSnapshot(
+        collection(db, 'modulos'),
+        snapshot => {
+          applyCloudTopics(snapshot.docs);
+        },
+        error => console.error('Erro no listener de módulos/teoria:', error)
+      );
+    }
+
+    if (!unsubscribeQuestions) {
+      unsubscribeQuestions = onSnapshot(
+        collection(db, 'questoes'),
+        snapshot => {
+          applyCloudQuestions(snapshot.docs);
+        },
+        error => console.error('Erro no listener do banco de questões:', error)
+      );
+    }
+
+    if (!unsubscribePublicConfig) {
+      unsubscribePublicConfig = onSnapshot(
+        doc(db, 'configuracoes', 'publico'),
+        snapshot => {
+          if (snapshot.exists()) applyCloudConfig(snapshot.data());
+        },
+        error => console.error('Erro no listener da configuração pública:', error)
+      );
+    }
+  };
+
+  async function initializeCloudContent() {
+    try {
+      await migratePublicContentIfCloudIsEmpty();
+    } catch (err) {
+      console.warn('Não foi possível migrar conteúdo local para o Firestore:', err);
+    }
+
+    // Listener permanente: qualquer alteração do professor aparece
+    // automaticamente em todos os dispositivos conectados.
+    window.startPublicContentRealtime();
+  }
+
+  // Alunos + conteúdo público usam listeners independentes.
   window.startStudentsRealtime();
+  await initializeCloudContent();
 
-  console.log('Firebase Firestore inicializado com sincronização REAL-TIME.');
+  console.log('Firebase inicializado: alunos, teoria, banco de questões e abas em REAL-TIME.');
 </script>
 
 </body>
