@@ -569,6 +569,13 @@
         function saveUserCronograma(cronData) {
             const key = `ctrb_cronograma_${currentUser.name || 'default'}`;
             localStorage.setItem(key, JSON.stringify(cronData));
+            // Firestore é a fonte compartilhada; o localStorage fica apenas como cache/offline.
+            if (currentUser.role === 'aluno' && window.saveStudentStateToCloud) {
+                window.saveStudentStateToCloud(currentUser, {
+                    cronograma: cronData,
+                    performance: multiStudentPerf[currentUser.name] || {}
+                }).catch(err => console.warn('Falha ao sincronizar cronograma:', err));
+            }
         }
 
         function getStudentCronogramaByName(name) {
@@ -585,6 +592,13 @@
         function saveStudentCronogramaByName(name, cronData) {
             const key = `ctrb_cronograma_${name}`;
             localStorage.setItem(key, JSON.stringify(cronData));
+            const student = registeredStudents.find(s => s.name === name);
+            if (window.saveStudentStateToCloud && student) {
+                window.saveStudentStateToCloud(student, {
+                    cronograma: cronData,
+                    performance: multiStudentPerf[name] || {}
+                }).catch(err => console.warn('Falha ao sincronizar cronograma do aluno:', err));
+            }
         }
 
         let masterQuestions = JSON.parse(localStorage.getItem('ctrb_questions_data')) || {};
@@ -1367,6 +1381,18 @@
                 multiStudentPerf[uName][topicId].erros += qty;
             }
             localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+
+            // Cada resposta é persistida na nuvem imediatamente.
+            if (currentUser.role === 'aluno' && window.saveStudentStateToCloud) {
+                const student = registeredStudents.find(s =>
+                    String(s.email || '').toLowerCase() === String(currentUser.email || '').toLowerCase()
+                ) || currentUser;
+
+                window.saveStudentStateToCloud(student, {
+                    performance: multiStudentPerf[uName],
+                    cronograma: getUserCronograma()
+                }).catch(err => console.warn('Falha ao sincronizar desempenho:', err));
+            }
         }
 
         function openAddQuestionModal(topicId) {
@@ -1946,7 +1972,9 @@
 <!-- FIREBASE + FIRESTORE -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, doc, getDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import {
+    getFirestore, collection, doc, getDoc, getDocs, setDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBlKg8Uq7PqRqDIeZWe5dDULrBzutRqyFY",
@@ -1963,37 +1991,69 @@
   window.firebaseApp = app;
   window.firebaseDB = db;
 
-  // Cada aluno fica em um documento próprio. O e-mail é usado apenas como ID técnico.
-  const studentDocId = (email) => encodeURIComponent(String(email || '').trim().toLowerCase());
+  const studentDocId = (email) =>
+    encodeURIComponent(String(email || '').trim().toLowerCase());
 
+  const nowISO = () => new Date().toISOString();
+
+  // O Firestore passa a armazenar também o desempenho e o cronograma.
+  // localStorage continua somente como cache/offline.
   window.saveStudentToCloud = async function(student) {
     if (!student || !student.email) throw new Error('Aluno sem e-mail.');
+
     await setDoc(doc(db, 'alunos', studentDocId(student.email)), {
       name: student.name || '',
-      email: student.email.trim().toLowerCase(),
+      email: String(student.email).trim().toLowerCase(),
       pass: student.pass || '',
       role: 'aluno',
-      updatedAt: new Date().toISOString()
+      updatedAt: nowISO()
     }, { merge: true });
   };
 
-  window.loadStudentsFromCloud = async function() {
-    const snap = await getDocs(collection(db, 'alunos'));
-    const cloudStudents = [];
-    snap.forEach(d => {
-      const data = d.data();
-      if (data && data.email) cloudStudents.push({
-        name: data.name || '', email: String(data.email).toLowerCase(),
-        pass: data.pass || '', role: 'aluno'
-      });
+  window.saveStudentStateToCloud = async function(student, state = {}) {
+    if (!student || !student.email) throw new Error('Aluno sem e-mail.');
+
+    const payload = {
+      name: student.name || '',
+      email: String(student.email).trim().toLowerCase(),
+      pass: student.pass || '',
+      role: 'aluno',
+      updatedAt: nowISO()
+    };
+
+    if (state.performance !== undefined) payload.performance = state.performance || {};
+    if (state.cronograma !== undefined) payload.cronograma = state.cronograma || [];
+
+    await setDoc(doc(db, 'alunos', studentDocId(student.email)), payload, { merge: true });
+  };
+
+  function applyCloudStudents(cloudStudents) {
+    const byEmail = new Map();
+
+    (Array.isArray(window.registeredStudents) ? window.registeredStudents : []).forEach(s => {
+      if (s && s.email) byEmail.set(String(s.email).trim().toLowerCase(), { ...s });
     });
 
-    // Mescla nuvem + dados locais, preservando cadastros antigos.
-    const byEmail = new Map();
-    (Array.isArray(window.registeredStudents) ? window.registeredStudents : []).forEach(s => {
-      if (s && s.email) byEmail.set(String(s.email).toLowerCase(), s);
+    cloudStudents.forEach(s => {
+      const email = String(s.email || '').trim().toLowerCase();
+      if (!email) return;
+
+      byEmail.set(email, {
+        name: s.name || '',
+        email,
+        pass: s.pass || '',
+        role: 'aluno'
+      });
+
+      if (s.performance && s.name) {
+        multiStudentPerf[s.name] = s.performance;
+        localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+      }
+
+      if (Array.isArray(s.cronograma) && s.name) {
+        localStorage.setItem(`ctrb_cronograma_${s.name}`, JSON.stringify(s.cronograma));
+      }
     });
-    cloudStudents.forEach(s => byEmail.set(s.email, s));
 
     if (Array.isArray(window.registeredStudents)) {
       window.registeredStudents.length = 0;
@@ -2001,15 +2061,112 @@
       localStorage.setItem('ctrb_students_db', JSON.stringify(window.registeredStudents));
     }
 
-    // Migra automaticamente os alunos que só existiam no localStorage.
-    const localOnly = Array.from(byEmail.values()).filter(s => !cloudStudents.some(c => c.email === String(s.email).toLowerCase()));
-    for (const student of localOnly) {
-      try { await window.saveStudentToCloud(student); } catch (e) { console.warn('Falha ao migrar aluno:', student.email, e); }
+    if (typeof currentUser !== 'undefined' &&
+        currentUser.role === 'admin' &&
+        typeof currentMainTab !== 'undefined' &&
+        currentMainTab === 'professor') {
+      renderMainContent();
     }
+
+    if (typeof currentUser !== 'undefined' &&
+        currentUser.role === 'aluno' &&
+        typeof currentMainTab !== 'undefined' &&
+        (currentMainTab === 'cronograma' || currentMainTab === 'desempenho')) {
+      renderMainContent();
+    }
+
+    if (typeof syncStudentProgression === 'function') syncStudentProgression();
+
+    return window.registeredStudents || [];
+  }
+
+  window.loadStudentsFromCloud = async function() {
+    const snap = await getDocs(collection(db, 'alunos'));
+    const cloudByEmail = new Map();
+    const cloudStudents = [];
+
+    snap.forEach(d => {
+      const data = d.data() || {};
+      if (!data.email) return;
+
+      const email = String(data.email).trim().toLowerCase();
+      const student = {
+        name: data.name || '',
+        email,
+        pass: data.pass || '',
+        role: 'aluno',
+        performance: data.performance || null,
+        cronograma: Array.isArray(data.cronograma) ? data.cronograma : null
+      };
+      cloudStudents.push(student);
+      cloudByEmail.set(email, student);
+    });
+
+    // Migração segura: só envia dados locais quando o documento da nuvem
+    // ainda não possui aquele dado. Assim, progresso mais recente da nuvem
+    // nunca é substituído pelo cache antigo deste dispositivo.
+    const localStudents = Array.isArray(window.registeredStudents)
+      ? [...window.registeredStudents] : [];
+
+    for (const localStudent of localStudents) {
+      const email = String(localStudent.email || '').trim().toLowerCase();
+      if (!email) continue;
+
+      const cloud = cloudByEmail.get(email);
+
+      if (!cloud) {
+        await window.saveStudentStateToCloud(localStudent, {
+          performance: multiStudentPerf[localStudent.name] || {},
+          cronograma: getStudentCronogramaByName(localStudent.name)
+        });
+      } else {
+        const updates = {};
+        if (cloud.performance === null) {
+          updates.performance = multiStudentPerf[localStudent.name] || {};
+        }
+        if (cloud.cronograma === null) {
+          updates.cronograma = getStudentCronogramaByName(localStudent.name);
+        }
+        if (Object.keys(updates).length) {
+          await window.saveStudentStateToCloud(localStudent, updates);
+        }
+      }
+    }
+
+    const fresh = await getDocs(collection(db, 'alunos'));
+    const freshStudents = [];
+    fresh.forEach(d => {
+      const data = d.data() || {};
+      if (data.email) freshStudents.push(data);
+    });
+
+    applyCloudStudents(freshStudents);
     return window.registeredStudents || [];
   };
 
-  // Funções de módulos/teoria mantidas para a integração já existente.
+  // Listener em tempo real: alterações feitas pelo aluno chegam ao professor
+  // sem reload e alterações feitas pelo professor chegam ao aluno.
+  let unsubscribeStudents = null;
+
+  window.startStudentsRealtime = function() {
+    if (unsubscribeStudents) return;
+
+    unsubscribeStudents = onSnapshot(
+      collection(db, 'alunos'),
+      snapshot => {
+        const students = [];
+        snapshot.forEach(d => {
+          const data = d.data() || {};
+          if (data.email) students.push(data);
+        });
+        applyCloudStudents(students);
+      },
+      error => {
+        console.error('Erro no listener em tempo real do Firestore:', error);
+      }
+    );
+  };
+
   window.saveTopicToCloud = async function(topicId, data) {
     await setDoc(doc(db, "modulos", topicId), data, { merge: true });
   };
@@ -2019,7 +2176,9 @@
     return snap.exists() ? snap.data() : null;
   };
 
-  console.log('Firebase Firestore inicializado.');
+  window.startStudentsRealtime();
+
+  console.log('Firebase Firestore inicializado com sincronização REAL-TIME.');
 </script>
 
 </body>
