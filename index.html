@@ -66,6 +66,15 @@
         #sidebar-container { display:none !important; }
         .question-option input { accent-color:#f59e0b; }
         .favorite-active { color:#f59e0b !important; }
+        .question-option-cut { text-decoration: line-through; opacity: .58; border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+        .dark .question-option-cut { background-color: #3f1d24 !important; border-color: #ef4444 !important; color: #fecaca !important; }
+        .question-option.correct-answer { border-color:#10b981 !important; background-color:#ecfdf5 !important; color:#065f46 !important; }
+        .dark .question-option.correct-answer { background-color:#052e22 !important; border-color:#10b981 !important; color:#bbf7d0 !important; }
+        .question-option.wrong-answer { border-color:#ef4444 !important; background-color:#fef2f2 !important; color:#991b1b !important; }
+        .dark .question-option.wrong-answer { background-color:#3f1d24 !important; border-color:#ef4444 !important; color:#fecaca !important; }
+        .cut-option-active { color:#ef4444 !important; border-color:#ef4444 !important; background-color:#fef2f2 !important; }
+        .dark .cut-option-active { background-color:#3f1d24 !important; }
+        .question-option.disabled-after-answer { cursor:default; }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
@@ -522,12 +531,17 @@
         let disciplinesData = JSON.parse(localStorage.getItem('ctrb_disciplines_data')) || ['Matemática'];
         let questionBankState = JSON.parse(localStorage.getItem('ctrb_question_bank_state')) || {
             discipline: 'Todos', subtopic: 'Todos', type: 'Todos', difficulty: 'Todos', keyword: '', pageSize: 10, page: 1,
-            status: 'Todos', mode: 'treino'
+            status: 'Todos', mode: 'treino', showProofResults: false
         };
+        if (questionBankState.showProofResults === undefined) questionBankState.showProofResults = false;
         let generatedSimulados = JSON.parse(localStorage.getItem('ctrb_simulados_data')) || [];
         let studentFavorites = JSON.parse(localStorage.getItem('ctrb_student_favorites')) || {};
         let studentHistory = JSON.parse(localStorage.getItem('ctrb_student_history')) || {};
         let studentNotes = JSON.parse(localStorage.getItem('ctrb_student_notes')) || {};
+        let studentCuts = JSON.parse(localStorage.getItem('ctrb_student_cuts')) || {};
+        let studentQuestionTimes = JSON.parse(localStorage.getItem('ctrb_student_question_times')) || {};
+        let studentDailyEvolution = JSON.parse(localStorage.getItem('ctrb_student_daily_evolution')) || {};
+        let questionViewTimers = {};
 
         function isAdmin() { return currentUser && currentUser.role === 'admin'; }
         function isModerator() { return currentUser && currentUser.role === 'moderador'; }
@@ -543,10 +557,44 @@
         function currentStudentKey(){ return String(currentUser?.email || currentUser?.name || 'visitante').toLowerCase(); }
         function getFavoriteMap(){ return studentFavorites[currentStudentKey()] || {}; }
         function isFavorite(qId){ return !!getFavoriteMap()[qId]; }
+        function getCutMap(){ return studentCuts[currentStudentKey()] || {}; }
+        function isQuestionCut(qId){ return !!getCutMap()[qId]; }
+        function toggleCutQuestion(qId, optionIndex){
+            if(currentUser.role==='visitante'){ alert('Faça login para marcar alternativas como cortadas.'); openAuthModal(); return; }
+            const key=currentStudentKey(); if(!studentCuts[key]) studentCuts[key]={};
+            const qCuts=studentCuts[key][qId] || {};
+            if(qCuts[optionIndex]) delete qCuts[optionIndex]; else qCuts[optionIndex]=true;
+            if(Object.keys(qCuts).length) studentCuts[key][qId]=qCuts; else delete studentCuts[key][qId];
+            localStorage.setItem('ctrb_student_cuts',JSON.stringify(studentCuts));
+            saveStudentActivityCloud();
+            const el=document.getElementById(`question-${qId}`);
+            if(el){ const opt=el.querySelector(`[data-option-index=\"${optionIndex}\"]`); if(opt) opt.classList.toggle('question-option-cut', !!qCuts[optionIndex]); const btn=el.querySelectorAll('.cut-option-btn')[optionIndex]; if(btn){ btn.classList.toggle('cut-option-active', !!qCuts[optionIndex]); btn.title=qCuts[optionIndex]?'Descortar alternativa':'Cortar alternativa'; } }
+        }
+        function getQuestionTimeData(qId){ return ((studentQuestionTimes[currentStudentKey()]||{})[qId]) || {totalSeconds:0,attempts:0,avgSeconds:0}; }
+        function startQuestionTimer(qId){ if(!questionViewTimers[qId]) questionViewTimers[qId]=Date.now(); }
+        function recordQuestionTime(qId){
+            const started=questionViewTimers[qId]; if(!started) return 0;
+            delete questionViewTimers[qId];
+            const seconds=Math.max(1,Math.min(3600,Math.round((Date.now()-started)/1000)));
+            const key=currentStudentKey(); if(!studentQuestionTimes[key]) studentQuestionTimes[key]={};
+            const t=studentQuestionTimes[key][qId] || {totalSeconds:0,attempts:0,avgSeconds:0};
+            t.totalSeconds += seconds; t.attempts += 1; t.avgSeconds = Math.round(t.totalSeconds/t.attempts);
+            studentQuestionTimes[key][qId]=t;
+            localStorage.setItem('ctrb_student_question_times',JSON.stringify(studentQuestionTimes));
+            return seconds;
+        }
+        function recordDailyEvolution(result){
+            const key=currentStudentKey(); const day=new Date().toISOString().slice(0,10);
+            if(!studentDailyEvolution[key]) studentDailyEvolution[key]={};
+            const d=studentDailyEvolution[key][day] || {answered:0,correct:0,errors:0};
+            d.answered += 1; if(result==='acerto') d.correct += 1; else d.errors += 1;
+            studentDailyEvolution[key][day]=d;
+            localStorage.setItem('ctrb_student_daily_evolution',JSON.stringify(studentDailyEvolution));
+        }
         function saveStudentActivityCloud(){
             if((currentUser?.role==='aluno' || currentUser?.role==='moderador') && window.saveStudentStateToCloud){
                 const student = registeredStudents.find(s => String(s.email||'').toLowerCase()===String(currentUser.email||'').toLowerCase()) || currentUser;
-                window.saveStudentStateToCloud(student,{ favorites:getFavoriteMap(), history:studentHistory[currentStudentKey()]||{}, notes:studentNotes[currentStudentKey()]||{} }).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
+                window.saveStudentStateToCloud(student,{ favorites:getFavoriteMap(), history:studentHistory[currentStudentKey()]||{}, notes:studentNotes[currentStudentKey()]||{}, cuts:getCutMap(), questionTimes:studentQuestionTimes[currentStudentKey()]||{}, dailyEvolution:studentDailyEvolution[currentStudentKey()]||{} }).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
             }
         }
         function toggleFavorite(qId){
@@ -558,7 +606,7 @@
         function saveQuestionNote(qId,value){
             const key=currentStudentKey(); if(!studentNotes[key]) studentNotes[key]={};
             if(value.trim()) studentNotes[key][qId]=value.trim(); else delete studentNotes[key][qId];
-            localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); saveStudentActivityCloud();
+            localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); localStorage.setItem('ctrb_student_cuts',JSON.stringify(studentCuts)); localStorage.setItem('ctrb_student_question_times',JSON.stringify(studentQuestionTimes)); localStorage.setItem('ctrb_student_daily_evolution',JSON.stringify(studentDailyEvolution)); saveStudentActivityCloud();
         }
         function getQuestionActivity(qId){ return (studentHistory[currentStudentKey()]||{})[qId] || {attempts:0,correct:0,lastResult:null,lastAt:null}; }
 
@@ -1066,7 +1114,7 @@
             renderMainContent();
         }
 
-        function saveQuestionBankState(){ questionBankState.mode=questionBankState.mode||'treino'; questionBankState.status=questionBankState.status||'Todos'; localStorage.setItem('ctrb_question_bank_state', JSON.stringify(questionBankState)); renderMainContent(); }
+        function saveQuestionBankState(){ questionBankState.mode=questionBankState.mode||'treino'; questionBankState.status=questionBankState.status||'Todos'; if(questionBankState.showProofResults===undefined) questionBankState.showProofResults=false; localStorage.setItem('ctrb_question_bank_state', JSON.stringify(questionBankState)); renderMainContent(); }
 
         function selectSubTopic(subId) {
             currentSubTopicId = subId;
@@ -1169,14 +1217,14 @@
                 const startIdx=(questionBankState.page-1)*pageSize; const pageItems=filtered.slice(startIdx,startIdx+pageSize);
                 const reset=()=>{questionBankState.page=1;saveQuestionBankState();};
                 const optionLabel=q=>q.type==='certo_errado'?'Certo / Errado':'Alternativa';
-                const renderQuestion=(q,idx)=>{ const activity=getQuestionActivity(q.id); const note=((studentNotes[activeKey]||{})[q.id]||'').replace(/"/g,'&quot;'); return `<article class="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4" id="question-${q.id}">
-                    <div class="flex flex-wrap justify-between items-center gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${optionLabel(q)}</span>${activity.attempts?`<span class="text-[10px] px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">${activity.attempts} tentativa(s)</span>`:''}</div>
+                const renderQuestion=(q,idx)=>{ const activity=getQuestionActivity(q.id); const cuts=getCutMap()[q.id]||{}; const note=((studentNotes[activeKey]||{})[q.id]||'').replace(/"/g,'&quot;'); const showProof=questionBankState.mode==='prova'&&questionBankState.showProofResults&&activity.attempts; startQuestionTimer(q.id); return `<article class="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4" id="question-${q.id}">
+                    <div class="flex flex-wrap justify-between items-center gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${optionLabel(q)}</span>${activity.attempts?`<span class="text-[10px] px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">${activity.attempts} tentativa(s)</span>`:''}</div>
                     <div class="flex items-center gap-2">${currentUser.role!=='visitante'?`<button onclick="toggleFavorite('${q.id}')" title="${isFavorite(q.id)?'Remover dos favoritos':'Salvar nos favoritos'}" class="text-slate-400 hover:text-amber-500 p-1"><i class="fa-star ${isFavorite(q.id)?'fa-solid favorite-active':'fa-regular'}"></i></button>`:''}${canManageContent()?`<button onclick="openEditQuestionModal('${q.topicId}','${q.id}')" class="text-xs text-slate-400 hover:text-amber-500">Editar</button><button onclick="deleteQuestion('${q.topicId}','${q.id}')" class="text-xs text-red-400">Excluir</button>`:''}</div></div>
                     <p class="text-sm font-medium text-slate-800 dark:text-slate-100">${q.statement}</p>
-                    <div class="space-y-2">${q.options.map((opt,i)=>`<label class="question-option flex items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${opt}</span></label>`).join('')}</div>
+                    <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${opt}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
                     <div class="flex flex-wrap gap-2"><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-700 text-white dark:text-amber-300 text-xs font-bold px-4 py-2 rounded-xl">${questionBankState.mode==='prova'?'Registrar resposta':'Responder e Ver Gabarito'}</button>${currentUser.role!=='visitante'?`<button onclick="focusQuestionNote('${q.id}')" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-note-sticky"></i> Anotação</button>`:''}</div>
                     ${currentUser.role!=='visitante'?`<input id="note_${q.id}" value="${note}" onchange="saveQuestionNote('${q.id}',this.value)" placeholder="Anote seu raciocínio, dúvida ou ponto para revisar..." class="hidden w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200">`:''}
-                    <div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div>
+                    <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s`:''}</div>
                 </article>`; };
                 main.innerHTML=`<div class="space-y-6"><div class="border-b border-slate-200 dark:border-slate-800 pb-4"><div class="flex flex-wrap justify-between items-center gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Questões</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Pratique, revise e acompanhe sua evolução</h2></div>${canManageContent()?`<button onclick="openAddQuestionModal()" class="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ Adicionar Questão</button>`:''}</div></div>
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/60 dark:bg-slate-900/70">
@@ -1188,7 +1236,7 @@
                         <input value="${questionBankState.keyword||''}" oninput="questionBankState.keyword=this.value" onkeydown="if(event.key==='Enter'){resetQuestionBankPage();}" placeholder="Buscar no enunciado" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs">
                         <select onchange="questionBankState.pageSize=Number(this.value);resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs">${[1,10,20,50].map(n=>`<option value="${n}" ${pageSize===n?'selected':''}>${n} por página</option>`).join('')}</select>
                     </div>
-                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs"><b class="text-slate-800 dark:text-slate-200">${filtered.length} questão(ões) encontrada(s)</b><div class="flex items-center gap-2"><span class="text-slate-500">Modo</span><button onclick="questionBankState.mode=questionBankState.mode==='prova'?'treino':'prova';saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold ${questionBankState.mode==='prova'?'bg-amber-500 text-slate-950':'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">${questionBankState.mode==='prova'?'Modo Prova':'Modo Treino'}</button><span>Página ${questionBankState.page} de ${totalPages}</span></div></div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs"><b class="text-slate-800 dark:text-slate-200">${filtered.length} questão(ões) encontrada(s)</b><div class="flex items-center gap-2"><span class="text-slate-500">Modo</span><button onclick="questionBankState.mode=questionBankState.mode==='prova'?'treino':'prova';questionBankState.showProofResults=false;saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold ${questionBankState.mode==='prova'?'bg-amber-500 text-slate-950':'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">${questionBankState.mode==='prova'?'Modo Prova':'Modo Treino'}</button><span>Página ${questionBankState.page} de ${totalPages}</span></div></div>
                     <div class="space-y-5">${pageItems.map(renderQuestion).join('')||'<div class="text-center py-12 text-xs text-slate-400">Nenhuma questão corresponde aos filtros.</div>'}</div>
                     ${questionBankState.mode==='prova'&&pageItems.length?`<div class="flex justify-end"><button onclick="finishQuestionBlock(${pageItems.map(q=>`'${q.id}'`).join(',')})" class="bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs">Finalizar bloco e ver resultados</button></div>`:''}
                     <div class="flex justify-center items-center gap-2"><button onclick="questionBankState.page=Math.max(1,questionBankState.page-1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">Anterior</button><span class="px-3 text-xs font-bold text-slate-700 dark:text-slate-300">${questionBankState.page}/${totalPages}</span><button onclick="questionBankState.page=Math.min(${totalPages},questionBankState.page+1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">Próxima</button></div></div>`;
@@ -1224,7 +1272,7 @@
 
         async function setUserRole(email, role){ if(!isAdmin()) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; st.role=role; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); if(window.updateStudentRoleInCloud) await window.updateStudentRoleInCloud(st,role); updateUserUI(); renderMainContent(); }
         async function clearStudentPerformance(name){ if(!isAdmin()) return; if(!confirm('Limpar todo o desempenho e histórico deste usuário?')) return; delete multiStudentPerf[name]; const st=registeredStudents.find(s=>s.name===name); const key=String(st?.email||name||'').toLowerCase(); delete studentHistory[key]; localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); if(st&&window.saveStudentStateToCloud) await window.saveStudentStateToCloud(st,{performance:{},history:{}}); renderMainContent(); }
-        async function deleteManagedStudent(email){ if(!isAdmin()) return; if(!confirm('Excluir este usuário e seus dados locais/nuvem?')) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; const key=String(st.email||st.name||'').toLowerCase(); registeredStudents=registeredStudents.filter(s=>s!==st); window.registeredStudents=registeredStudents; delete multiStudentPerf[st.name]; delete studentFavorites[key]; delete studentHistory[key]; delete studentNotes[key]; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); localStorage.setItem('ctrb_student_favorites',JSON.stringify(studentFavorites)); localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); if(window.deleteStudentFromCloud) await window.deleteStudentFromCloud(st.email); renderMainContent(); }
+        async function deleteManagedStudent(email){ if(!isAdmin()) return; if(!confirm('Excluir este usuário e seus dados locais/nuvem?')) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; const key=String(st.email||st.name||'').toLowerCase(); registeredStudents=registeredStudents.filter(s=>s!==st); window.registeredStudents=registeredStudents; delete multiStudentPerf[st.name]; delete studentFavorites[key]; delete studentHistory[key]; delete studentNotes[key]; delete studentCuts[key]; delete studentQuestionTimes[key]; delete studentDailyEvolution[key]; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); localStorage.setItem('ctrb_student_favorites',JSON.stringify(studentFavorites)); localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); localStorage.setItem('ctrb_student_cuts',JSON.stringify(studentCuts)); localStorage.setItem('ctrb_student_question_times',JSON.stringify(studentQuestionTimes)); localStorage.setItem('ctrb_student_daily_evolution',JSON.stringify(studentDailyEvolution)); if(window.deleteStudentFromCloud) await window.deleteStudentFromCloud(st.email); renderMainContent(); }
         async function deleteGeneratedSimulado(id){ if(!isAdmin()) return; generatedSimulados=generatedSimulados.filter(s=>s.id!==id); localStorage.setItem('ctrb_simulados_data',JSON.stringify(generatedSimulados)); if(currentSimulado?.id===id){ currentSimulado=null; localStorage.removeItem('ctrb_current_simulado'); } if(window.deleteSimuladoFromCloud) await window.deleteSimuladoFromCloud(id); renderMainContent(); }
 
         // VISUALIZAÇÃO E AÇÕES DO CRONOGRAMA DE ESTUDOS
@@ -1425,74 +1473,41 @@
         function checkAnswer(qId, correctIdx, topicId) {
             const selected = document.querySelector(`input[name="opt_${qId}"]:checked`) || document.querySelector(`input[name="opt_sim_${qId}"]:checked`);
             const feedbackDiv = document.getElementById(`feedback_${qId}`);
-
-            if (!selected) {
-                alert('Selecione uma alternativa antes de conferir.');
-                return;
-            }
-
-            const val = parseInt(selected.value);
-            let foundQ = null;
-            Object.values(masterQuestions).forEach(arr => {
-                const f = arr.find(q => q.id === qId);
-                if (f) foundQ = f;
-            });
-
-            const tId = topicId || (foundQ ? foundQ.topicId : currentSubTopicId);
-            const letter = ['A', 'B', 'C', 'D', 'E'][correctIdx];
-            const correctText = foundQ && foundQ.options ? foundQ.options[correctIdx] : '';
-            const motivation = (foundQ && foundQ.explanation && foundQ.explanation.trim() !== '') 
-                ? foundQ.explanation 
-                : 'Nenhuma fundamentação ou explicação cadastrada para esta questão.';
-
-            const key=currentStudentKey();
-            if(!studentHistory[key]) studentHistory[key]={};
+            if (!selected) { alert('Selecione uma alternativa antes de conferir.'); return; }
+            const val=parseInt(selected.value,10);
+            let foundQ=null; Object.values(masterQuestions).forEach(arr=>{const f=arr.find(q=>q.id===qId); if(f) foundQ=f;});
+            if(!foundQ && currentSimulado?.questions) foundQ=currentSimulado.questions.find(q=>q.id===qId)||null;
+            const tId=topicId || (foundQ?foundQ.topicId:currentSubTopicId);
+            const isCorrect=val===correctIdx;
+            const letter=['A','B','C','D','E'][correctIdx] || '';
+            const correctText=foundQ?.options?.[correctIdx] || '';
+            const motivation=(foundQ?.explanation||'').trim() || 'Nenhuma fundamentação ou explicação cadastrada para esta questão.';
+            const elapsed=recordQuestionTime(qId);
+            const key=currentStudentKey(); if(!studentHistory[key]) studentHistory[key]={};
             const prior=studentHistory[key][qId]||{attempts:0,correct:0,lastResult:null,lastAt:null};
-            prior.attempts=(prior.attempts||0)+1; prior.lastResult=val===correctIdx?'acerto':'erro'; prior.correct=(prior.correct||0)+(val===correctIdx?1:0); prior.lastAt=new Date().toISOString();
-            studentHistory[key][qId]=prior; localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory));
-            saveStudentActivityCloud();
+            prior.attempts=(prior.attempts||0)+1; prior.lastResult=isCorrect?'acerto':'erro'; prior.lastAnswer=val; prior.correct=(prior.correct||0)+(isCorrect?1:0); prior.lastAt=new Date().toISOString(); prior.lastSeconds=elapsed;
+            studentHistory[key][qId]=prior; localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); recordDailyEvolution(isCorrect?'acerto':'erro'); saveStudentActivityCloud();
+            const questionRoot=document.getElementById(`question-${qId}`);
+            const optionLabels=questionRoot?questionRoot.querySelectorAll('.question-option'):[];
+            optionLabels.forEach((lab,i)=>{ lab.classList.remove('correct-answer','wrong-answer'); lab.classList.add('disabled-after-answer'); if(i===correctIdx) lab.classList.add('correct-answer'); if(i===val && !isCorrect) lab.classList.add('wrong-answer'); });
+            if(questionRoot){ questionRoot.querySelectorAll('input[type=radio]').forEach(inp=>inp.disabled=true); }
 
             if(questionBankState.mode==='prova' && currentMainTab==='questoes'){
+                adjustPerformance(tId,isCorrect?'acerto':'erro',1);
                 feedbackDiv.className='text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 mt-2 block';
                 feedbackDiv.innerHTML='<i class="fa-solid fa-circle-check"></i> Resposta registrada. O resultado será exibido ao finalizar o bloco.';
                 return;
             }
-
-            feedbackDiv.classList.remove('hidden');
-
-            if (val === correctIdx) {
-                adjustPerformance(tId, 'acerto', 1);
-                feedbackDiv.className = 'text-xs p-4 rounded-xl border border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML = `
-                    <div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm">
-                        <i class="fa-solid fa-circle-check text-base"></i> Resposta Correta! (Registrado no Desempenho)
-                    </div>
-                    <div class="mb-2 font-semibold">
-                        Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60">
-                        <span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação da Resposta:</span>
-                        <p class="leading-relaxed font-medium">${motivation}</p>
-                    </div>
-                `;
+            if(isCorrect){
+                adjustPerformance(tId,'acerto',1);
+                feedbackDiv.className='text-xs p-4 rounded-xl border border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 mt-3 block shadow-sm';
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${motivation}</p></div>`;
             } else {
-                adjustPerformance(tId, 'erro', 1);
-                feedbackDiv.className = 'text-xs p-4 rounded-xl border border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-950 dark:text-red-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML = `
-                    <div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm">
-                        <i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!
-                    </div>
-                    <div class="mb-2 font-semibold">
-                        Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60">
-                        <span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação da Resposta:</span>
-                        <p class="leading-relaxed font-medium">${motivation}</p>
-                    </div>
-                `;
+                adjustPerformance(tId,'erro',1);
+                feedbackDiv.className='text-xs p-4 rounded-xl border border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-950 dark:text-red-100 mt-3 block shadow-sm';
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${motivation}</p></div>`;
             }
-
-            if (window.MathJax) MathJax.typesetPromise();
+            if(window.MathJax) MathJax.typesetPromise();
         }
 
         function adjustPerformance(topicId, type, qty) {
@@ -1856,12 +1871,7 @@
                                 </div>
                                 <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
                                 <div class="space-y-2 pl-1">
-                                    ${q.options.map((opt, optIdx) => `
-                                        <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
-                                            <input type="radio" name="opt_sim_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
-                                            <span>${opt}</span>
-                                        </label>
-                                    `).join('')}
+                                    ${q.options.map((opt, optIdx) => { const cut=!!((getCutMap()[q.id]||{})[optIdx]); return `<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${optIdx}" class="question-option ${cut?'question-option-cut':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_sim_${q.id}" value="${optIdx}"><span>${opt}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${optIdx})" title="${cut?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cut?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`; }).join('')}
                                 </div>
                                 <div class="pt-2 flex items-center gap-3">
                                     <button onclick="checkAnswer('${q.id}', ${q.correct}, '${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-xl transition shadow border border-slate-700">
@@ -1876,27 +1886,35 @@
             `;
         }
 
-        function resetQuestionBankPage(){ questionBankState.page=1; saveQuestionBankState(); }
+        function resetQuestionBankPage(){ questionBankState.page=1; questionBankState.showProofResults=false; saveQuestionBankState(); }
         function focusQuestionNote(qId){ const el=document.getElementById(`note_${qId}`); if(el){ el.classList.toggle('hidden'); if(!el.classList.contains('hidden')) el.focus(); } }
         function finishQuestionBlock(...qIds){
-            let correct=0, answered=0; qIds.forEach(qId=>{ const a=getQuestionActivity(qId); if(a.attempts){answered++; if(a.lastResult==='acerto')correct++; const f=document.getElementById(`feedback_${qId}`); if(f && questionBankState.mode==='prova'){ f.classList.remove('hidden'); f.innerHTML=`<b>Resultado registrado.</b> Esta questão foi ${a.lastResult==='acerto'?'respondida corretamente':'respondida incorretamente'}.`; f.className='text-xs p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 mt-2'; } }});
-            alert(`Bloco finalizado: ${correct} acerto(s) em ${answered} questão(ões) respondida(s).`);
+            let correct=0, answered=0; qIds.forEach(qId=>{ const a=getQuestionActivity(qId); if(a.attempts){answered++; if(a.lastResult==='acerto')correct++; } });
+            questionBankState.showProofResults=true; localStorage.setItem('ctrb_question_bank_state',JSON.stringify(questionBankState));
             renderMainContent();
+            setTimeout(()=>alert(`Bloco finalizado: ${correct} acerto(s) em ${answered} questão(ões) respondida(s).`),50);
         }
         function renderPerformanceView(main) {
-            const uName=currentUser.name||'Visitante'; const key=currentStudentKey(); const studentPerf=multiStudentPerf[uName]||{}; const hist=studentHistory[key]||{}; const favMap=getFavoriteMap();
-            let totalAcertos=0,totalErros=0,totalTentativas=0;
-            topicsData.forEach(t=>{ const st=studentPerf[t.id]||{acertos:0,erros:0}; totalAcertos+=st.acertos; totalErros+=st.erros; });
+            const uName=currentUser.name||'Visitante'; const key=currentStudentKey(); const studentPerf=multiStudentPerf[uName]||{}; const hist=studentHistory[key]||{}; const favMap=getFavoriteMap(); const times=studentQuestionTimes[key]||{}; const daily=studentDailyEvolution[key]||{};
+            let totalAcertos=0,totalErros=0,totalTentativas=0,totalSeconds=0,timeSamples=0;
+            topicsData.forEach(t=>{const st=studentPerf[t.id]||{acertos:0,erros:0};totalAcertos+=st.acertos;totalErros+=st.erros;});
             Object.values(hist).forEach(a=>totalTentativas+=a.attempts||0);
-            const totalRespondidas=totalAcertos+totalErros; const taxa=totalRespondidas?Math.round(totalAcertos/totalRespondidas*100):0;
-            const weak=topicsData.map(t=>{const st=studentPerf[t.id]||{acertos:0,erros:0};const tot=st.acertos+st.erros;return {...t,pct:tot?Math.round(st.acertos/tot*100):0,total:tot,acertos:st.acertos,erros:st.erros};}).sort((a,b)=>a.pct-b.pct);
-            const recent=Object.entries(hist).sort((a,b)=>String(b[1].lastAt||'').localeCompare(String(a[1].lastAt||''))).slice(0,12);
+            Object.values(times).forEach(t=>{totalSeconds+=t.totalSeconds||0;timeSamples+=t.attempts||0;});
+            const totalRespondidas=totalAcertos+totalErros, taxa=totalRespondidas?Math.round(totalAcertos/totalRespondidas*100):0, avgTime=timeSamples?Math.round(totalSeconds/timeSamples):0;
+            const weak=topicsData.map(t=>{const st=studentPerf[t.id]||{acertos:0,erros:0};const tot=st.acertos+st.erros;return {...t,pct:tot?Math.round(st.acertos/tot*100):0,total:tot,acertos:st.acertos,erros:st.erros};}).sort((a,b)=>{if(a.total===0&&b.total!==0)return 1;if(b.total===0&&a.total!==0)return -1;return a.pct-b.pct;});
+            const review=Object.entries(hist).filter(([,a])=>a.lastResult==='erro').sort((a,b)=>(b[1].lastAt||'').localeCompare(a[1].lastAt||'')).slice(0,10);
+            const recent=Object.entries(hist).sort((a,b)=>(b[1].lastAt||'').localeCompare(a[1].lastAt||'')).slice(0,12);
             const allQuestions={}; Object.values(masterQuestions).forEach(list=>(list||[]).forEach(q0=>{const q=normalizeQuestion(q0);allQuestions[q.id]=q;}));
-            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Relatório de Evolução</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho</h2><p class="text-xs text-slate-500 dark:text-slate-400">Tudo que ajuda na revisão fica concentrado nesta aba.</p></div><button onclick="switchMainTab('questoes');questionBankState.status='favoritas';questionBankState.page=1;saveQuestionBankState();" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold">Ver favoritas (${Object.keys(favMap).length})</button></div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3"><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Taxa de acerto</div><div class="text-2xl font-black text-amber-500">${taxa}%</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Respondidas</div><div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Tentativas</div><div class="text-2xl font-black text-sky-500">${totalTentativas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Favoritas</div><div class="text-2xl font-black text-amber-500">${Object.keys(favMap).length}</div></div></div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><h3 class="font-bold text-sm mb-3">Desempenho por tópico</h3><div class="space-y-3">${weak.map(t=>`<div><div class="flex justify-between text-xs gap-2"><span class="font-semibold text-slate-700 dark:text-slate-200">${t.title}</span><span class="text-amber-500 font-bold">${t.pct}%</span></div><div class="w-full h-2 mt-1 rounded-full bg-slate-200 dark:bg-slate-700"><div class="h-2 rounded-full bg-amber-500" style="width:${t.pct}%"></div></div><div class="text-[10px] text-slate-400 mt-1">${t.acertos} acertos • ${t.erros} erros</div></div>`).join('')}</div></div>
-                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><h3 class="font-bold text-sm mb-3">Foco de revisão</h3><div class="space-y-2">${weak.filter(t=>t.total>0).slice(0,5).map(t=>`<button onclick="switchMainTab('questoes');questionBankState.subtopic='${t.id}';questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-500/50"><div class="text-xs font-bold text-slate-800 dark:text-slate-100">${t.title}</div><div class="text-[10px] text-slate-400 mt-1">${t.erros} erro(s) • ${t.pct}% de acerto</div></button>`).join('')||'<p class="text-xs text-slate-400">Ainda não há dados suficientes. Resolva algumas questões para montar seu foco de revisão.</p>'}</div></div></div>
-                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center gap-3 mb-3"><h3 class="font-bold text-sm">Histórico recente</h3><button onclick="switchMainTab('questoes');questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="text-xs font-bold text-amber-500">Revisar erros</button></div><div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr class="border-b border-slate-200 dark:border-slate-800"><th class="p-2">Questão</th><th class="p-2">Tentativas</th><th class="p-2">Último resultado</th><th class="p-2">Última vez</th></tr></thead><tbody>${recent.map(([qid,a])=>`<tr class="border-b border-slate-100 dark:border-slate-800"><td class="p-2 font-semibold">${allQuestions[qid]?.statement?.slice(0,90)||qid}${(allQuestions[qid]?.statement?.length||0)>90?'…':''}</td><td class="p-2">${a.attempts||0}</td><td class="p-2 font-bold ${a.lastResult==='acerto'?'text-emerald-500':'text-red-500'}">${a.lastResult==='acerto'?'Acertou':'Errou'}</td><td class="p-2 text-slate-400">${a.lastAt?new Date(a.lastAt).toLocaleString('pt-BR'):''}</td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma questão respondida ainda.</td></tr>'}</tbody></table></div></div></div>`;
+            const days=[]; for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+            const maxDay=Math.max(1,...days.map(d=>daily[d]?.answered||0));
+            const heatDays=[]; for(let i=27;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const iso=d.toISOString().slice(0,10);heatDays.push([iso,daily[iso]||{answered:0,correct:0,errors:0}]);}
+            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Relatório de Evolução</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho</h2><p class="text-xs text-slate-500 dark:text-slate-400">Desempenho, velocidade e revisão reunidos em um só lugar.</p></div><div class="flex gap-2"><button onclick="switchMainTab('questoes');questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/50 text-xs font-bold">Revisão de erros (${review.length})</button><button onclick="switchMainTab('questoes');questionBankState.status='favoritas';questionBankState.page=1;saveQuestionBankState();" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold">Favoritas (${Object.keys(favMap).length})</button></div></div>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3"><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Taxa de acerto</div><div class="text-2xl font-black text-amber-500">${taxa}%</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Respondidas</div><div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Tentativas</div><div class="text-2xl font-black text-sky-500">${totalTentativas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Tempo médio</div><div class="text-2xl font-black text-violet-500">${avgTime}s</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Favoritas</div><div class="text-2xl font-black text-amber-500">${Object.keys(favMap).length}</div></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Evolução — últimos 14 dias</h3><span class="text-[10px] text-slate-400">questões por dia</span></div><div class="grid grid-cols-14 gap-1 items-end h-28">${days.map(d=>{const n=daily[d]?.answered||0;const h=Math.max(4,Math.round(n/maxDay*88));return `<div class="flex flex-col justify-end items-center h-full gap-1"><span class="text-[9px] text-slate-400">${n||''}</span><div class="w-full rounded-sm bg-amber-500/70" style="height:${h}px"></div><span class="text-[8px] text-slate-400">${d.slice(8,10)}</span></div>`;}).join('')}</div></div>
+                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Calendário de consistência</h3><span class="text-[10px] text-slate-400">últimos 28 dias</span></div><div class="grid grid-cols-7 gap-1.5">${heatDays.map(([d,v])=>{const n=v.answered||0;const cls=n===0?'bg-slate-100 dark:bg-slate-800':n<3?'bg-amber-200 dark:bg-amber-900/50':n<6?'bg-amber-400 dark:bg-amber-700': 'bg-amber-600 dark:bg-amber-500'; return `<div title="${d}: ${n} questão(ões), ${v.correct||0} acerto(s)" class="h-6 rounded ${cls}"></div>`;}).join('')}</div></div></div>
+                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Desempenho por tópico e subtópico</h3><span class="text-[10px] text-slate-400">priorize os menores percentuais</span></div><div class="space-y-3">${weak.map(t=>`<div><div class="flex justify-between text-xs gap-2"><span class="font-semibold text-slate-700 dark:text-slate-200">${t.title}</span><span class="text-amber-500 font-bold">${t.pct}%</span></div><div class="w-full h-2 mt-1 rounded-full bg-slate-200 dark:bg-slate-700"><div class="h-2 rounded-full bg-amber-500" style="width:${t.pct}%"></div></div><div class="text-[10px] text-slate-400 mt-1">${t.acertos} acertos • ${t.erros} erros • ${t.total} respondidas</div></div>`).join('')}</div></div>
+                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex flex-wrap justify-between items-center gap-2 mb-3"><div><h3 class="font-bold text-sm">Revisão inteligente</h3><p class="text-[10px] text-slate-400">Comece pelos erros mais recentes e pelos tópicos com menor aproveitamento.</p></div><button onclick="switchMainTab('questoes');questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="text-xs font-bold text-amber-500">Abrir fila de revisão</button></div><div class="space-y-2">${weak.filter(t=>t.total>0).slice(0,5).map(t=>`<button onclick="switchMainTab('questoes');questionBankState.subtopic='${t.id}';questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-500/50"><div class="text-xs font-bold text-slate-800 dark:text-slate-100">${t.title}</div><div class="text-[10px] text-slate-400 mt-1">${t.erros} erro(s) • ${t.pct}% de acerto</div></button>`).join('')||'<p class="text-xs text-slate-400">Resolva algumas questões para gerar uma fila de revisão personalizada.</p>'}</div></div>
+                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center gap-3 mb-3"><h3 class="font-bold text-sm">Histórico recente</h3><span class="text-[10px] text-slate-400">tempo da última tentativa</span></div><div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr class="border-b border-slate-200 dark:border-slate-800"><th class="p-2">Questão</th><th class="p-2">Tentativas</th><th class="p-2">Resultado</th><th class="p-2">Tempo</th><th class="p-2">Última vez</th></tr></thead><tbody>${recent.map(([qid,a])=>`<tr class="border-b border-slate-100 dark:border-slate-800"><td class="p-2 font-semibold">${allQuestions[qid]?.statement?.slice(0,80)||qid}${(allQuestions[qid]?.statement?.length||0)>80?'…':''}</td><td class="p-2">${a.attempts||0}</td><td class="p-2 font-bold ${a.lastResult==='acerto'?'text-emerald-500':'text-red-500'}">${a.lastResult==='acerto'?'Acertou':'Errou'}</td><td class="p-2">${a.lastSeconds||0}s</td><td class="p-2 text-slate-400">${a.lastAt?new Date(a.lastAt).toLocaleString('pt-BR'):''}</td></tr>`).join('')||'<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhuma questão respondida ainda.</td></tr>'}</tbody></table></div></div></div>`;
         }
 
         // PAINEL DO PROFESSOR ATUALIZADO (DESEMPENHO + CRONOGRAMA DOS ALUNOS)
@@ -2167,6 +2185,9 @@
     if (state.favorites !== undefined) payload.favorites = state.favorites || {};
     if (state.history !== undefined) payload.history = state.history || {};
     if (state.notes !== undefined) payload.notes = state.notes || {};
+    if (state.cuts !== undefined) payload.cuts = state.cuts || {};
+    if (state.questionTimes !== undefined) payload.questionTimes = state.questionTimes || {};
+    if (state.dailyEvolution !== undefined) payload.dailyEvolution = state.dailyEvolution || {};
 
     await setDoc(doc(db, 'alunos', studentDocId(student.email)), payload, { merge: true });
   };
@@ -2202,6 +2223,9 @@
       if(s.favorites){ studentFavorites[cloudKey]=s.favorites; localStorage.setItem('ctrb_student_favorites',JSON.stringify(studentFavorites)); }
       if(s.history){ studentHistory[cloudKey]=s.history; localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); }
       if(s.notes){ studentNotes[cloudKey]=s.notes; localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); }
+      if(s.cuts){ studentCuts[cloudKey]=s.cuts; localStorage.setItem('ctrb_student_cuts',JSON.stringify(studentCuts)); }
+      if(s.questionTimes){ studentQuestionTimes[cloudKey]=s.questionTimes; localStorage.setItem('ctrb_student_question_times',JSON.stringify(studentQuestionTimes)); }
+      if(s.dailyEvolution){ studentDailyEvolution[cloudKey]=s.dailyEvolution; localStorage.setItem('ctrb_student_daily_evolution',JSON.stringify(studentDailyEvolution)); }
     });
 
     if (Array.isArray(window.registeredStudents)) {
