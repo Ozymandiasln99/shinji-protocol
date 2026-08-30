@@ -40,6 +40,8 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <style>
+        /* O acesso rápido lateral foi desativado: a navegação passa a ser feita pelas abas. */
+        #sidebar-container { display: none !important; }
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
         .dark .custom-scroll::-webkit-scrollbar-thumb { background: #334155; }
@@ -368,6 +370,14 @@
                 </div>
 
                 <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Tipo de Questão</label>
+                    <select id="q-edit-type" onchange="toggleQuestionTypeFields()" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold">
+                        <option value="multipla">Múltipla escolha</option>
+                        <option value="certo_errado">Certo ou Errado</option>
+                    </select>
+                </div>
+
+                <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Dificuldade</label>
                     <select id="q-edit-difficulty" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
                         <option value="Fácil">Fácil</option>
@@ -434,6 +444,10 @@
                     <div id="sim-topics-checkboxes" class="space-y-1.5 max-h-36 overflow-y-auto p-2 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs"></div>
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Fonte do Caderno</label>
+                    <select id="sim-source" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"><option value="banco">Questões do Banco</option><option value="ineditas">Questões inéditas (caderno-modelo para preenchimento)</option></select>
+                </div>
+                <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Quantidade de Questões</label>
                     <input type="number" id="sim-qty" min="5" max="100" value="20" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 </div>
@@ -442,6 +456,27 @@
                     <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition shadow">Gerar Caderno</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE GESTÃO DE DISCIPLINAS/SUBTÓPICOS -->
+    <div id="content-management-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeContentManagementModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-layer-group text-amber-500"></i> Gerenciar Estrutura do Banco</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Somente o professor/administrador e os moderadores podem cadastrar novas disciplinas e subtópicos.</p>
+            <div class="space-y-4">
+                <form onsubmit="addDiscipline(event)" class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2">
+                    <label class="text-xs font-bold">Nova disciplina</label>
+                    <div class="flex gap-2"><input id="new-discipline-name" required placeholder="Ex.: Língua Portuguesa" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs"><button class="bg-amber-500 text-slate-950 px-3 py-2 rounded-lg text-xs font-bold">Adicionar</button></div>
+                </form>
+                <form onsubmit="addSubtopic(event)" class="border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-2">
+                    <label class="text-xs font-bold">Novo subtópico</label>
+                    <select id="new-subtopic-discipline" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs"></select>
+                    <div class="flex gap-2"><input id="new-subtopic-name" required placeholder="Ex.: Regra de Três" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs"><button class="bg-slate-900 text-amber-400 px-3 py-2 rounded-lg text-xs font-bold">Criar subtópico</button></div>
+                </form>
+                <div class="text-[11px] text-slate-500" id="content-structure-list"></div>
+            </div>
         </div>
     </div>
 
@@ -464,9 +499,28 @@
 
         let currentMainTab = 'edital'; 
         let currentSubTopicId = '2.1';
-        let currentSimulado = null;
+        let currentSimulado = JSON.parse(localStorage.getItem('ctrb_current_simulado')) || null;
         let quillTopicEditor = null;
         let profSelectedStudentName = '';
+
+        // Estrutura nova do Banco de Questões. A disciplina é administrada somente
+        // pelo administrador/moderadores; os subtópicos continuam sendo os módulos do edital.
+        let disciplinesData = JSON.parse(localStorage.getItem('ctrb_disciplines_data')) || ['Matemática'];
+        let questionBankState = JSON.parse(localStorage.getItem('ctrb_question_bank_state')) || {
+            discipline: 'Todos', subtopic: 'Todos', type: 'Todos', difficulty: 'Todos', keyword: '', pageSize: 10, page: 1
+        };
+        let generatedSimulados = JSON.parse(localStorage.getItem('ctrb_simulados_data')) || [];
+
+        function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+        function isModerator() { return currentUser && currentUser.role === 'moderador'; }
+        function canManageContent() { return isAdmin() || isModerator(); }
+        function canAccessProfessorPanel() { return canManageContent(); }
+        function normalizeQuestion(q, fallbackTopicId) {
+            const topicId = q.topicId || fallbackTopicId || currentSubTopicId;
+            const topic = topicsData.find(t => t.id === topicId);
+            const type = q.type || ((Array.isArray(q.options) && q.options.length === 2 && q.options[0] === 'Certo' && q.options[1] === 'Errado') ? 'certo_errado' : 'multipla');
+            return { ...q, topicId, discipline: q.discipline || (topic && topic.discipline) || 'Matemática', type, options: type === 'certo_errado' ? ['Certo', 'Errado'] : (Array.isArray(q.options) && q.options.length ? q.options : ['', '', '', '', '']) };
+        }
 
         function getYoutubeEmbedUrl(input) {
             if (!input) return '';
@@ -570,7 +624,7 @@
             const key = `ctrb_cronograma_${currentUser.name || 'default'}`;
             localStorage.setItem(key, JSON.stringify(cronData));
             // Firestore é a fonte compartilhada; o localStorage fica apenas como cache/offline.
-            if (currentUser.role === 'aluno' && window.saveStudentStateToCloud) {
+            if ((currentUser.role === 'aluno' || currentUser.role === 'moderador') && window.saveStudentStateToCloud) {
                 window.saveStudentStateToCloud(currentUser, {
                     cronograma: cronData,
                     performance: multiStudentPerf[currentUser.name] || {}
@@ -602,6 +656,15 @@
         }
 
         let masterQuestions = JSON.parse(localStorage.getItem('ctrb_questions_data')) || {};
+
+        // Compatibilidade: tópicos existentes pertencem à disciplina atualmente disponível.
+        topicsData.forEach(t => { if (!t.discipline) t.discipline = 'Matemática'; });
+        disciplinesData = Array.from(new Set([...disciplinesData, ...topicsData.map(t => t.discipline).filter(Boolean)]));
+        localStorage.setItem('ctrb_disciplines_data', JSON.stringify(disciplinesData));
+        Object.keys(masterQuestions).forEach(topicId => {
+            masterQuestions[topicId] = (masterQuestions[topicId] || []).map(q => normalizeQuestion(q, topicId));
+        });
+        localStorage.setItem('ctrb_questions_data', JSON.stringify(masterQuestions));
 
         function generate20QuestionsForTopic(tId, titleName) {
             const list = [];
@@ -736,10 +799,17 @@
                 `;
             }
 
-            if (currentUser.role === 'admin') {
+            if (canAccessProfessorPanel()) {
                 html += `
                     <button id="tab-nav-professor" onclick="switchMainTab('professor')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-amber-400 hover:text-white hover:bg-slate-700/50 border border-amber-500/30">
                         <i class="fa-solid fa-chalkboard-user"></i> Painel do Professor
+                    </button>
+                `;
+            }
+            if (isAdmin()) {
+                html += `
+                    <button id="tab-nav-moderacao" onclick="switchMainTab('moderacao')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30">
+                        <i class="fa-solid fa-shield-halved"></i> Moderação
                     </button>
                 `;
             }
@@ -758,11 +828,20 @@
             const sidebarContainer = document.getElementById('sidebar-container');
             const cfgBtn = document.getElementById('cfg-credentials-btn');
 
-            if (currentUser.role === 'admin') {
+            if (isAdmin()) {
                 userBadge.classList.remove('hidden');
                 userNameLabel.textContent = currentUser.name || 'Professor';
                 userRoleBadge.textContent = 'PROFESSOR';
                 userRoleBadge.className = 'bg-amber-500 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-black uppercase';
+                authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sair';
+                adminTools.classList.remove('hidden');
+                sidebarContainer.classList.remove('hidden');
+                if (cfgBtn) cfgBtn.classList.remove('hidden');
+            } else if (isModerator()) {
+                userBadge.classList.remove('hidden');
+                userNameLabel.textContent = currentUser.name || 'Moderador';
+                userRoleBadge.textContent = 'MODERADOR';
+                userRoleBadge.className = 'bg-sky-500 text-slate-950 text-[10px] px-1.5 py-0.5 rounded font-black uppercase';
                 authBtn.innerHTML = '<i class="fa-solid fa-right-from-bracket"></i> Sair';
                 adminTools.classList.remove('hidden');
                 sidebarContainer.classList.remove('hidden');
@@ -908,7 +987,7 @@
             } else {
                 const found = registeredStudents.find(s => (s.email === u || s.name === u) && s.pass === p);
                 if (found) {
-                    currentUser = { role: 'aluno', name: found.name, email: found.email, pass: found.pass };
+                    currentUser = { role: found.role === 'moderador' ? 'moderador' : 'aluno', name: found.name, email: found.email, pass: found.pass };
                     localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
                     syncStudentProgression();
                     updateUserUI();
@@ -921,10 +1000,10 @@
         }
 
         function switchMainTab(tab) {
-            if ((tab === 'professor') && currentUser.role !== 'admin') {
+            if ((tab === 'professor') && !canAccessProfessorPanel()) {
                 tab = 'edital';
             }
-            if (currentUser.role === 'visitante' && (tab === 'desempenho' || tab === 'cronograma')) {
+            if (currentUser.role === 'visitante' && (tab === 'desempenho' || tab === 'cronograma' || tab === 'moderacao')) {
                 alert('Aba restrita a alunos logados e moderadores. Por favor, faça login ou cadastre-se!');
                 openAuthModal();
                 tab = 'edital';
@@ -932,7 +1011,7 @@
 
             currentMainTab = tab;
             
-            const tabs = ['edital', 'teoria', 'questoes', 'simulados', 'cronograma', 'desempenho', 'professor'];
+            const tabs = ['edital', 'teoria', 'questoes', 'simulados', 'cronograma', 'desempenho', 'professor', 'moderacao'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tab-nav-${t}`);
                 if (btn) {
@@ -946,6 +1025,8 @@
 
             renderMainContent();
         }
+
+        function saveQuestionBankState(){ localStorage.setItem('ctrb_question_bank_state', JSON.stringify(questionBankState)); renderMainContent(); }
 
         function selectSubTopic(subId) {
             currentSubTopicId = subId;
@@ -1008,96 +1089,41 @@
                 `;
             } 
             else if (currentMainTab === 'teoria') {
-                const embedUrl = getYoutubeEmbedUrl(topic.ytVideoId);
+                const availableDisciplines = disciplinesData;
+                const activeDiscipline = questionBankState.discipline !== 'Todos' ? questionBankState.discipline : ((topic && topic.discipline) || availableDisciplines[0] || 'Matemática');
+                const disciplineTopics = topicsData.filter(t => (t.discipline || 'Matemática') === activeDiscipline);
+                if (!disciplineTopics.some(t => t.id === currentSubTopicId) && disciplineTopics.length) currentSubTopicId = disciplineTopics[0].id;
+                const activeTopic = topicsData.find(t => t.id === currentSubTopicId) || disciplineTopics[0] || topic;
+                const embedUrl = getYoutubeEmbedUrl(activeTopic?.ytVideoId || '');
                 main.innerHTML = `
                     <div class="space-y-6">
                         <div class="flex flex-wrap justify-between items-start gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <div>
-                                <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Material Teórico Avançado</span>
-                                <h2 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">${topic.title}</h2>
-                            </div>
-                            ${currentUser.role === 'admin' ? `
-                                <button onclick="openEditTopicModal('${topic.id}')" class="bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 text-amber-400 text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 border border-amber-500/30">
-                                    <i class="fa-solid fa-pen-to-square"></i> Editar Teoria
-                                </button>
-                            ` : ''}
+                            <div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Material Teórico Avançado</span><h2 class="text-2xl font-black text-slate-800 dark:text-slate-100 mt-1">${activeTopic?.title || 'Escolha um subtópico'}</h2></div>
+                            ${canManageContent() && activeTopic ? `<button onclick="openEditTopicModal('${activeTopic.id}')" class="bg-slate-800 dark:bg-slate-700 text-amber-400 text-xs px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 border border-amber-500/30"><i class="fa-solid fa-pen-to-square"></i> Editar Teoria</button>` : ''}
                         </div>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                            <div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
-                                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-                                    <i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo
-                                </h3>
-                                <div class="prose dark:prose-invert max-w-none text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                                    ${topic.theory}
-                                </div>
-                            </div>
-
-                            <div class="lg:col-span-5 space-y-3 sticky top-24">
-                                <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                    <i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist Explicativa
-                                </h3>
-                                <div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border border-slate-200 dark:border-slate-800 bg-slate-950">
-                                    <iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                                </div>
-                            </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+                            <div><label class="text-[10px] font-bold uppercase text-slate-500">Disciplina</label><select onchange="questionBankState.discipline=this.value; questionBankState.subtopic='Todos'; localStorage.setItem('ctrb_question_bank_state',JSON.stringify(questionBankState)); renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${availableDisciplines.map(d=>`<option ${d===activeDiscipline?'selected':''}>${d}</option>`).join('')}</select></div>
+                            <div><label class="text-[10px] font-bold uppercase text-slate-500">Tópico / Subtópico</label><select onchange="currentSubTopicId=this.value; renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${disciplineTopics.map(t=>`<option value="${t.id}" ${t.id===currentSubTopicId?'selected':''}>${t.title}</option>`).join('')}</select></div>
                         </div>
-                    </div>
-                `;
+                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${activeTopic.theory || '<p>Material ainda não cadastrado.</p>'}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950">${embedUrl ? `<iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allowfullscreen></iframe>` : '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div>'}</div></div></div>` : ''}
+                    </div>`;
             }
             else if (currentMainTab === 'questoes') {
-                main.innerHTML = `
-                    <div class="space-y-6">
-                        <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <div>
-                                <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Exercícios</span>
-                                <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">${topic.title}</h2>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-black bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-lg">${questions.length} Questões</span>
-                                ${currentUser.role === 'admin' ? `
-                                    <button onclick="openAddQuestionModal('${topic.id}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-3 py-1 rounded-lg shadow">
-                                        + Adicionar Questão
-                                    </button>
-                                ` : ''}
-                            </div>
-                        </div>
-
-                        <div class="space-y-6">
-                            ${questions.length === 0 ? '<p class="text-xs text-slate-400">Nenhuma questão cadastrada para este subtópico.</p>' : ''}
-                            ${questions.map((q, idx) => `
-                                <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-                                    <div class="flex justify-between items-center">
-                                        <div class="flex items-center gap-2">
-                                            <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1}</span>
-                                        </div>
-                                        ${currentUser.role === 'admin' ? `
-                                            <div class="flex gap-2">
-                                                <button onclick="openEditQuestionModal('${currentSubTopicId}', '${q.id}')" class="text-xs text-slate-400 hover:text-amber-500 p-1"><i class="fa-solid fa-pen"></i> Editar</button>
-                                                <button onclick="deleteQuestion('${currentSubTopicId}', '${q.id}')" class="text-xs text-red-400 hover:text-red-600 p-1"><i class="fa-solid fa-trash"></i> Excluir</button>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                    <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
-                                    <div class="space-y-2 pl-1">
-                                        ${q.options.map((opt, optIdx) => `
-                                            <label class="flex items-center gap-3 text-xs text-slate-700 dark:text-slate-300 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition">
-                                                <input type="radio" name="opt_${q.id}" value="${optIdx}" class="text-amber-500 focus:ring-amber-400">
-                                                <span>${opt}</span>
-                                            </label>
-                                        `).join('')}
-                                    </div>
-                                    <div class="pt-2 flex items-center gap-3">
-                                        <button onclick="checkAnswer('${q.id}', ${q.correct}, '${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-xl transition shadow border border-slate-700">
-                                            Responder e Ver Gabarito
-                                        </button>
-                                    </div>
-                                    <div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div>
-                                </div>
-                            `).join('')}
-                        </div>
+                const filtered = [];
+                Object.entries(masterQuestions).forEach(([topicId,list]) => (list||[]).forEach(q0=>{ const q=normalizeQuestion(q0,topicId); const t=topicsData.find(x=>x.id===topicId); const discipline=(q.discipline||(t?.discipline)||'Matemática'); const okD=questionBankState.discipline==='Todos'||discipline===questionBankState.discipline; const okT=questionBankState.subtopic==='Todos'||topicId===questionBankState.subtopic; const okTy=questionBankState.type==='Todos'||q.type===questionBankState.type; const okDf=questionBankState.difficulty==='Todos'||q.difficulty===questionBankState.difficulty; const kw=(questionBankState.keyword||'').toLowerCase(); const okK=!kw||(q.statement||'').toLowerCase().includes(kw)||(q.explanation||'').toLowerCase().includes(kw); if(okD&&okT&&okTy&&okDf&&okK) filtered.push(q); }));
+                const pageSize = Number(questionBankState.pageSize)||10; const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize)); if(questionBankState.page>totalPages) questionBankState.page=totalPages; const startIdx=(questionBankState.page-1)*pageSize; const pageItems=filtered.slice(startIdx,startIdx+pageSize);
+                main.innerHTML=`<div class="space-y-6"><div class="border-b border-slate-200 dark:border-slate-800 pb-4"><div class="flex flex-wrap justify-between items-center gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Questões</span><h2 class="text-xl font-bold mt-1">Pratique por disciplina, subtópico e tipo</h2></div>${canManageContent()?`<button onclick="openAddQuestionModal()" class="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ Adicionar Questão</button>`:''}</div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+                        <select onchange="questionBankState.discipline=this.value; questionBankState.subtopic='Todos'; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option>Todos</option>${disciplinesData.map(d=>`<option ${questionBankState.discipline===d?'selected':''}>${d}</option>`).join('')}</select>
+                        <select onchange="questionBankState.subtopic=this.value; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option value="Todos">Todos os subtópicos</option>${topicsData.filter(t=>questionBankState.discipline==='Todos'||(t.discipline||'Matemática')===questionBankState.discipline).map(t=>`<option value="${t.id}" ${questionBankState.subtopic===t.id?'selected':''}>${t.title}</option>`).join('')}</select>
+                        <select onchange="questionBankState.type=this.value; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option value="Todos">Todos os tipos</option><option value="multipla" ${questionBankState.type==='multipla'?'selected':''}>Múltipla escolha</option><option value="certo_errado" ${questionBankState.type==='certo_errado'?'selected':''}>Certo ou Errado</option></select>
+                        <select onchange="questionBankState.difficulty=this.value; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option>Todos</option>${['Fácil','Média','Difícil'].map(d=>`<option ${questionBankState.difficulty===d?'selected':''}>${d}</option>`).join('')}</select>
+                        <input value="${questionBankState.keyword||''}" oninput="questionBankState.keyword=this.value" onkeydown="if(event.key==='Enter'){questionBankState.page=1;saveQuestionBankState();}" placeholder="Palavra-chave" class="px-2.5 py-2 rounded-lg border text-xs">
+                        <select onchange="questionBankState.pageSize=Number(this.value); questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs">${[1,10,20,50].map(n=>`<option value="${n}" ${pageSize===n?'selected':''}>${n} por página</option>`).join('')}</select>
                     </div>
-                `;
+                    <div class="flex items-center justify-between text-xs"><b>${filtered.length} questão(ões) encontrada(s)</b><span>Página ${questionBankState.page} de ${totalPages}</span></div>
+                    <div class="space-y-5">${pageItems.map((q,idx)=>`<div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4"><div class="flex flex-wrap justify-between gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 text-amber-800">${q.type==='certo_errado'?'CERTO / ERRADO':'MÚLTIPLA'}</span><span class="text-[10px] text-slate-400">${q.difficulty||'Média'}</span></div>${canManageContent()?`<div class="flex gap-2"><button onclick="openEditQuestionModal('${q.topicId}','${q.id}')" class="text-xs text-slate-400 hover:text-amber-500">Editar</button><button onclick="deleteQuestion('${q.topicId}','${q.id}')" class="text-xs text-red-400">Excluir</button></div>`:''}</div><p class="text-sm font-medium">${q.statement}</p><div class="space-y-2">${q.options.map((opt,i)=>`<label class="flex items-center gap-3 text-xs p-2.5 rounded-xl border cursor-pointer"><input type="radio" name="opt_${q.id}" value="${i}"><span>${opt}</span></label>`).join('')}</div><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl">Responder e Ver Gabarito</button><div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div></div>`).join('') || '<p class="text-xs text-slate-400">Nenhuma questão corresponde aos filtros.</p>'}</div>
+                    <div class="flex justify-center items-center gap-2"><button onclick="questionBankState.page=Math.max(1,questionBankState.page-1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border text-xs">Anterior</button><span class="px-3 text-xs font-bold">${questionBankState.page}/${totalPages}</span><button onclick="questionBankState.page=Math.min(${totalPages},questionBankState.page+1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border text-xs">Próxima</button></div></div>`;
             }
             else if (currentMainTab === 'simulados') {
                 renderSimuladoView(main);
@@ -1111,9 +1137,26 @@
             else if (currentMainTab === 'professor') {
                 renderProfessorDashboard(main);
             }
+            else if (currentMainTab === 'moderacao') {
+                renderModerationView(main);
+            }
 
             if (window.MathJax) MathJax.typesetPromise();
         }
+
+        function renderModerationView(main){
+            if(!isAdmin()){ main.innerHTML='<div class="text-xs text-red-500 font-bold">Acesso exclusivo do administrador.</div>'; return; }
+            const students=registeredStudents||[]; const mods=students.filter(s=>s.role==='moderador');
+            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b pb-4"><div><span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Área exclusiva</span><h2 class="text-2xl font-black mt-1">Moderação</h2><p class="text-xs text-slate-500">Controle de permissões, usuários, desempenho, simulados e estrutura do banco.</p></div><button onclick="openContentManagementModal()" class="bg-amber-500 text-slate-950 px-3 py-2 rounded-lg text-xs font-bold">Gerenciar Disciplinas/Subtópicos</button></div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="p-4 rounded-2xl border"><div class="text-[10px] uppercase font-bold text-slate-400">Usuários</div><div class="text-2xl font-black">${students.length}</div></div><div class="p-4 rounded-2xl border"><div class="text-[10px] uppercase font-bold text-slate-400">Moderadores</div><div class="text-2xl font-black text-sky-500">${mods.length}</div></div><div class="p-4 rounded-2xl border"><div class="text-[10px] uppercase font-bold text-slate-400">Simulados salvos</div><div class="text-2xl font-black text-amber-500">${generatedSimulados.length}</div></div></div>
+            <div class="border rounded-2xl p-5"><h3 class="font-bold text-sm mb-3"><i class="fa-solid fa-users-gear text-rose-500"></i> Usuários e permissões</h3><div class="space-y-2">${students.map(s=>`<div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"><div><b class="text-xs">${s.name}</b><div class="text-[10px] text-slate-400">${s.email}</div></div><div class="flex gap-2 items-center"><span class="text-[10px] font-bold uppercase">${s.role||'aluno'}</span>${s.role==='moderador'?`<button onclick="setUserRole('${s.email}','aluno')" class="px-2 py-1 border rounded text-[10px]">Revogar moderador</button>`:`<button onclick="setUserRole('${s.email}','moderador')" class="px-2 py-1 bg-sky-500 text-white rounded text-[10px] font-bold">Tornar moderador</button>`}<button onclick="clearStudentPerformance('${s.name}')" class="px-2 py-1 border rounded text-[10px] text-red-500">Limpar desempenho</button><button onclick="deleteManagedStudent('${s.email}')" class="px-2 py-1 border rounded text-[10px] text-red-500">Excluir usuário</button></div></div>`).join('')||'<p class="text-xs text-slate-400">Nenhum usuário cadastrado.</p>'}</div></div>
+            <div class="border rounded-2xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm"><i class="fa-solid fa-file-pen text-amber-500"></i> Simulados gerados</h3><button onclick="openSimuladoModal()" class="bg-slate-900 text-amber-400 px-3 py-1.5 rounded-lg text-xs font-bold">Novo caderno</button></div><div class="space-y-2">${generatedSimulados.map(s=>`<div class="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"><div><b class="text-xs">${s.title}</b><div class="text-[10px] text-slate-400">${s.questions?.length||0} questões • ${s.source==='ineditas'?'inéditas':'banco'}</div></div><button onclick="deleteGeneratedSimulado('${s.id}')" class="text-red-500 text-xs"><i class="fa-solid fa-trash"></i> Excluir</button></div>`).join('')||'<p class="text-xs text-slate-400">Nenhum caderno salvo.</p>'}</div></div></div>`;
+        }
+
+        async function setUserRole(email, role){ if(!isAdmin()) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; st.role=role; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); if(window.updateStudentRoleInCloud) await window.updateStudentRoleInCloud(st,role); updateUserUI(); renderMainContent(); }
+        async function clearStudentPerformance(name){ if(!isAdmin()) return; if(!confirm('Limpar todo o desempenho deste usuário?')) return; delete multiStudentPerf[name]; localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); const st=registeredStudents.find(s=>s.name===name); if(st&&window.saveStudentStateToCloud) await window.saveStudentStateToCloud(st,{performance:{}}); renderMainContent(); }
+        async function deleteManagedStudent(email){ if(!isAdmin()) return; if(!confirm('Excluir este usuário e seus dados locais/nuvem?')) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; registeredStudents=registeredStudents.filter(s=>s!==st); window.registeredStudents=registeredStudents; delete multiStudentPerf[st.name]; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); if(window.deleteStudentFromCloud) await window.deleteStudentFromCloud(st.email); renderMainContent(); }
+        async function deleteGeneratedSimulado(id){ if(!isAdmin()) return; generatedSimulados=generatedSimulados.filter(s=>s.id!==id); localStorage.setItem('ctrb_simulados_data',JSON.stringify(generatedSimulados)); if(currentSimulado?.id===id){ currentSimulado=null; localStorage.removeItem('ctrb_current_simulado'); } if(window.deleteSimuladoFromCloud) await window.deleteSimuladoFromCloud(id); renderMainContent(); }
 
         // VISUALIZAÇÃO E AÇÕES DO CRONOGRAMA DE ESTUDOS
         function renderCronogramaView(main) {
@@ -1383,7 +1426,7 @@
             localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
 
             // Cada resposta é persistida na nuvem imediatamente.
-            if (currentUser.role === 'aluno' && window.saveStudentStateToCloud) {
+            if ((currentUser.role === 'aluno' || currentUser.role === 'moderador') && window.saveStudentStateToCloud) {
                 const student = registeredStudents.find(s =>
                     String(s.email || '').toLowerCase() === String(currentUser.email || '').toLowerCase()
                 ) || currentUser;
@@ -1395,10 +1438,46 @@
             }
         }
 
+        function toggleQuestionTypeFields() {
+            const type = document.getElementById('q-edit-type')?.value || 'multipla';
+            const ids = ['q-edit-opt0','q-edit-opt1','q-edit-opt2','q-edit-opt3','q-edit-opt4'];
+            const placeholders = type === 'certo_errado' ? ['Certo','Errado','','',''] : ['Opção A','Opção B','Opção C','Opção D','Opção E'];
+            ids.forEach((id,i)=>{ const el=document.getElementById(id); if (!el) return; el.placeholder=placeholders[i]; el.required = i < (type==='certo_errado'?2:5); el.parentElement?.classList.toggle('hidden', i >= (type==='certo_errado'?2:5)); });
+            const correct = document.getElementById('q-edit-correct');
+            if (correct) correct.innerHTML = type === 'certo_errado' ? '<option value="0">Certo</option><option value="1">Errado</option>' : '<option value="0">Opção A</option><option value="1">Opção B</option><option value="2">Opção C</option><option value="3">Opção D</option><option value="4">Opção E</option>';
+        }
+
+        function openContentManagementModal() {
+            if (!canManageContent()) return;
+            const sel=document.getElementById('new-subtopic-discipline');
+            sel.innerHTML=disciplinesData.map(d=>`<option value="${d}">${d}</option>`).join('');
+            document.getElementById('content-structure-list').innerHTML=disciplinesData.map(d=>{ const count=topicsData.filter(t=>(t.discipline||'Matemática')===d).length; return `<div class="flex justify-between py-1"><span>${d}</span><b>${count} subtópico(s)</b></div>`; }).join('');
+            document.getElementById('content-management-modal').classList.remove('hidden');
+        }
+        function closeContentManagementModal(){ document.getElementById('content-management-modal').classList.add('hidden'); }
+        async function addDiscipline(e){
+            e.preventDefault(); if(!canManageContent()) return; const name=document.getElementById('new-discipline-name').value.trim();
+            if(!name || disciplinesData.some(d=>d.toLowerCase()===name.toLowerCase())) { alert('Essa disciplina já existe ou é inválida.'); return; }
+            disciplinesData.push(name); localStorage.setItem('ctrb_disciplines_data',JSON.stringify(disciplinesData));
+            if(window.saveContentCatalogToCloud) await window.saveContentCatalogToCloud(disciplinesData);
+            document.getElementById('new-discipline-name').value=''; openContentManagementModal(); renderMainContent();
+        }
+        async function addSubtopic(e){
+            e.preventDefault(); if(!canManageContent()) return; const discipline=document.getElementById('new-subtopic-discipline').value; const title=document.getElementById('new-subtopic-name').value.trim();
+            if(!title) return; const id=`${String(discipline).toLowerCase().replace(/[^a-z0-9]+/gi,'_')}_${Date.now()}`;
+            const topic={id,title,discipline,ytVideoId:'',theory:'<h3>Novo subtópico</h3><p>Edite este material pelo painel do professor.</p>'}; topicsData.push(topic); masterQuestions[id]=[];
+            localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData)); localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
+            if(window.saveTopicToCloud) await window.saveTopicToCloud(id,topic);
+            if(window.saveQuestionToCloud){}
+            document.getElementById('new-subtopic-name').value=''; currentSubTopicId=id; renderSidebarNav(); openContentManagementModal(); renderMainContent();
+            alert('Subtópico criado.');
+        }
+
         function openAddQuestionModal(topicId) {
             document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-plus-circle text-amber-500"></i> Adicionar Nova Questão';
             document.getElementById('q-edit-id').value = '';
             document.getElementById('q-edit-topic-id').value = topicId || currentSubTopicId;
+            document.getElementById('q-edit-type').value = 'multipla';
             document.getElementById('q-edit-statement').value = '';
             document.getElementById('q-edit-opt0').value = '';
             document.getElementById('q-edit-opt1').value = '';
@@ -1407,6 +1486,7 @@
             document.getElementById('q-edit-opt4').value = '';
             document.getElementById('q-edit-correct').value = '0';
             document.getElementById('q-edit-explanation').value = '';
+            toggleQuestionTypeFields();
 
             const sel = document.getElementById('q-edit-target-topic');
             sel.innerHTML = topicsData.map(t => `<option value="${t.id}" ${t.id === (topicId || currentSubTopicId) ? 'selected' : ''}>${t.title}</option>`).join('');
@@ -1422,6 +1502,7 @@
             document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-file-pen text-amber-500"></i> Editar Questão';
             document.getElementById('q-edit-id').value = q.id;
             document.getElementById('q-edit-topic-id').value = topicId;
+            document.getElementById('q-edit-type').value = q.type || 'multipla';
             document.getElementById('q-edit-difficulty').value = q.difficulty || 'Média';
             document.getElementById('q-edit-statement').value = q.statement || '';
             document.getElementById('q-edit-opt0').value = q.options[0] || '';
@@ -1431,6 +1512,7 @@
             document.getElementById('q-edit-opt4').value = q.options[4] || '';
             document.getElementById('q-edit-correct').value = q.correct || 0;
             document.getElementById('q-edit-explanation').value = q.explanation || '';
+            toggleQuestionTypeFields();
 
             const sel = document.getElementById('q-edit-target-topic');
             sel.innerHTML = topicsData.map(t => `<option value="${t.id}" ${t.id === topicId ? 'selected' : ''}>${t.title}</option>`).join('');
@@ -1449,6 +1531,7 @@
             const qId = document.getElementById('q-edit-id').value;
 
             const difficulty = document.getElementById('q-edit-difficulty').value;
+            const type = document.getElementById('q-edit-type').value;
             const statement = document.getElementById('q-edit-statement').value.trim();
             const opt0 = document.getElementById('q-edit-opt0').value.trim();
             const opt1 = document.getElementById('q-edit-opt1').value.trim();
@@ -1462,9 +1545,11 @@
             const questionData = {
                 id: qId || `${targetTopicId}_q_${Date.now()}`,
                 topicId: targetTopicId,
+                discipline: (topicsData.find(t => t.id === targetTopicId) || {}).discipline || 'Matemática',
+                type: type,
                 difficulty: difficulty,
                 statement: statement,
-                options: [opt0, opt1, opt2, opt3, opt4],
+                options: type === 'certo_errado' ? ['Certo','Errado'] : [opt0, opt1, opt2, opt3, opt4],
                 correct: correct,
                 explanation: explanation
             };
@@ -1529,6 +1614,7 @@
         }
 
         function openEditTopicModal(topicId) {
+            if (!canManageContent()) return;
             const t = topicsData.find(item => item.id === topicId);
             if (!t) return;
             document.getElementById('edit-topic-id').value = t.id;
@@ -1545,7 +1631,7 @@
         }
 
         async function saveTopicChanges(e) {
-            e.preventDefault();
+            e.preventDefault(); if (!canManageContent()) return;
             const id = document.getElementById('edit-topic-id').value;
             const title = document.getElementById('edit-topic-title').value.trim();
             const yt = document.getElementById('edit-topic-yt').value.trim();
@@ -1554,6 +1640,7 @@
             const idx = topicsData.findIndex(item => item.id === id);
             if (idx !== -1) {
                 topicsData[idx].title = title;
+                topicsData[idx].discipline = topicsData[idx].discipline || 'Matemática';
                 topicsData[idx].ytVideoId = yt;
                 topicsData[idx].theory = content;
                 localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
@@ -1631,56 +1718,38 @@
             document.getElementById('simulado-modal').classList.add('hidden');
         }
 
-        function generateSimulado(e) {
-            e.preventDefault();
-            const title = document.getElementById('sim-title').value.trim();
-            const qty = parseInt(document.getElementById('sim-qty').value);
-            const checkboxes = document.querySelectorAll('.sim-topic-chk:checked');
-            const selectedTopicIds = Array.from(checkboxes).map(c => c.value);
+        async function generateSimulado(e) {
+            e.preventDefault(); if(!canManageContent()){alert('Acesso restrito aos administradores/moderadores.'); return;}
+            const title=document.getElementById('sim-title').value.trim(); const qty=parseInt(document.getElementById('sim-qty').value); const source=document.getElementById('sim-source').value; const selectedTopicIds=Array.from(document.querySelectorAll('.sim-topic-chk:checked')).map(c=>c.value);
+            if(!selectedTopicIds.length){alert('Selecione pelo menos um subtópico.');return;}
+            let selectedQuestions=[];
+            if(source==='banco'){ let pool=[]; selectedTopicIds.forEach(id=>pool=pool.concat((masterQuestions[id]||[]).map(q=>normalizeQuestion(q,id)))); pool.sort(()=>Math.random()-0.5); selectedQuestions=pool.slice(0,Math.min(qty,pool.length)); }
+            else { selectedQuestions=Array.from({length:qty},(_,i)=>({id:`inedita_${Date.now()}_${i}`,topicId:selectedTopicIds[i%selectedTopicIds.length],discipline:(topicsData.find(t=>t.id===selectedTopicIds[i%selectedTopicIds.length])||{}).discipline||'Matemática',type:'multipla',difficulty:'Média',statement:`[Questão inédita ${i+1}] Enunciado a ser desenvolvido pelo professor/moderador.`,options:['Opção A','Opção B','Opção C','Opção D','Opção E'],correct:0,explanation:'Preencha a questão inédita e seu gabarito no caderno antes de publicar.'})); }
+            currentSimulado={id:`sim_${Date.now()}`,title,source,createdAt:new Date().toISOString(),questions:selectedQuestions}; generatedSimulados.unshift(currentSimulado); generatedSimulados=generatedSimulados.slice(0,100); localStorage.setItem('ctrb_current_simulado',JSON.stringify(currentSimulado)); localStorage.setItem('ctrb_simulados_data',JSON.stringify(generatedSimulados));
+            if(window.saveSimuladoToCloud) await window.saveSimuladoToCloud(currentSimulado);
+            closeSimuladoModal(); switchMainTab('simulados');
+        }
 
-            if (selectedTopicIds.length === 0) {
-                alert('Selecione pelo menos um subtópico para o simulado.');
-                return;
-            }
-
-            let pool = [];
-            selectedTopicIds.forEach(id => {
-                if (masterQuestions[id]) pool = pool.concat(masterQuestions[id]);
-            });
-
-            if (pool.length === 0) {
-                alert('Não há questões cadastradas nos subtópicos selecionados.');
-                return;
-            }
-
-            pool.sort(() => 0.5 - Math.random());
-            const selectedQuestions = pool.slice(0, Math.min(qty, pool.length));
-
-            currentSimulado = {
-                title: title,
-                questions: selectedQuestions
-            };
-
-            closeSimuladoModal();
-            switchMainTab('simulados');
+        function openSavedSimulado(id){
+            const sim=generatedSimulados.find(s=>s.id===id);
+            if(!sim) return;
+            currentSimulado=sim;
+            localStorage.setItem('ctrb_current_simulado',JSON.stringify(sim));
+            renderMainContent();
         }
 
         function renderSimuladoView(main) {
             if (!currentSimulado) {
                 main.innerHTML = `
-                    <div class="text-center py-16 space-y-4">
-                        <div class="bg-amber-500/10 text-amber-500 w-16 h-16 rounded-full flex items-center justify-center mx-auto text-2xl">
-                            <i class="fa-solid fa-file-pen"></i>
+                    <div class="space-y-6">
+                        <div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-3">
+                            <div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Cadernos de Prova</span><h2 class="text-xl font-bold mt-1">Simulados</h2><p class="text-xs text-slate-500">Selecione um caderno criado pelo professor/moderador.</p></div>
+                            ${canManageContent()?`<button onclick="openSimuladoModal()" class="bg-amber-500 text-slate-950 px-3 py-2 rounded-lg text-xs font-bold">Criar Novo Caderno</button>`:''}
                         </div>
-                        <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100">Nenhum Simulado Ativo</h2>
-                        <p class="text-xs text-slate-500 max-w-sm mx-auto">Gere um novo caderno de questões de simulado para testar seus conhecimentos globais.</p>
-                        ${currentUser.role === 'admin' ? `
-                            <button onclick="openSimuladoModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs shadow transition">
-                                Criar Novo Simulado
-                            </button>
-                        ` : ''}
-                    </div>
-                `;
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            ${generatedSimulados.map(s=>`<button onclick="openSavedSimulado('${s.id}')" class="text-left p-4 border border-slate-200 dark:border-slate-800 rounded-2xl hover:border-amber-500/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition"><div class="flex justify-between items-start gap-3"><div><b class="text-sm">${s.title}</b><div class="text-[10px] text-slate-400 mt-1">${s.questions?.length||0} questões • ${s.source==='ineditas'?'inéditas':'banco de questões'}</div></div><i class="fa-solid fa-arrow-right text-amber-500"></i></div></button>`).join('') || '<div class="col-span-full text-center py-12 text-xs text-slate-400">Nenhum caderno publicado ainda.</div>'}
+                        </div>
+                    </div>`;
                 return;
             }
 
@@ -1807,6 +1876,7 @@
 
         // PAINEL DO PROFESSOR ATUALIZADO (DESEMPENHO + CRONOGRAMA DOS ALUNOS)
         function renderProfessorDashboard(main) {
+            if (!canAccessProfessorPanel()) { main.innerHTML = '<p class="text-xs text-slate-400">Acesso restrito.</p>'; return; }
             if (registeredStudents.length === 0) {
                 main.innerHTML = `
                     <div class="space-y-6">
@@ -2051,7 +2121,7 @@
       name: student.name || '',
       email: String(student.email).trim().toLowerCase(),
       pass: student.pass || '',
-      role: 'aluno',
+      role: student.role || 'aluno',
       updatedAt: nowISO()
     }, { merge: true });
   };
@@ -2088,7 +2158,7 @@
         name: s.name || '',
         email,
         pass: s.pass || '',
-        role: 'aluno'
+        role: s.role || 'aluno'
       });
 
       if (s.performance && s.name) {
@@ -2108,14 +2178,14 @@
     }
 
     if (typeof currentUser !== 'undefined' &&
-        currentUser.role === 'admin' &&
+        (currentUser.role === 'admin' || currentUser.role === 'moderador') &&
         typeof currentMainTab !== 'undefined' &&
         currentMainTab === 'professor') {
       renderMainContent();
     }
 
     if (typeof currentUser !== 'undefined' &&
-        currentUser.role === 'aluno' &&
+        (currentUser.role === 'aluno' || currentUser.role === 'moderador') &&
         typeof currentMainTab !== 'undefined' &&
         (currentMainTab === 'cronograma' || currentMainTab === 'desempenho')) {
       renderMainContent();
@@ -2139,7 +2209,7 @@
         name: data.name || '',
         email,
         pass: data.pass || '',
-        role: 'aluno',
+        role: data.role || 'aluno',
         performance: data.performance || null,
         cronograma: Array.isArray(data.cronograma) ? data.cronograma : null
       };
@@ -2245,6 +2315,15 @@
       updatedAt: nowISO()
     }, { merge: true });
   };
+
+  window.updateStudentRoleInCloud = async function(student, role) {
+    if (!student || !student.email) throw new Error('Usuário sem e-mail.');
+    await setDoc(doc(db, 'alunos', studentDocId(student.email)), { role, updatedAt: nowISO() }, { merge: true });
+  };
+  window.deleteStudentFromCloud = async function(email) { if(email) await deleteDoc(doc(db,'alunos',studentDocId(email))); };
+  window.saveSimuladoToCloud = async function(sim) { if(sim?.id) await setDoc(doc(db,'simulados',safeDocId(sim.id)), {...sim,updatedAt:nowISO()},{merge:true}); };
+  window.deleteSimuladoFromCloud = async function(id) { if(id) await deleteDoc(doc(db,'simulados',safeDocId(id))); };
+  window.saveContentCatalogToCloud = async function(disciplines) { await setDoc(doc(db,'configuracoes','conteudo'), { disciplines, updatedAt: nowISO() }, {merge:true}); };
 
   async function migratePublicContentIfCloudIsEmpty() {
     // ---------- MÓDULOS ----------
@@ -2358,6 +2437,11 @@
     if (typeof renderMainContent === 'function') renderMainContent();
   }
 
+  function applyCloudContentCatalog(data){ if(data?.disciplines?.length){ disciplinesData=data.disciplines; localStorage.setItem('ctrb_disciplines_data',JSON.stringify(disciplinesData)); if(typeof renderMainContent==='function') renderMainContent(); } }
+  function applyCloudSimulados(docs){ generatedSimulados=docs.map(d=>({id:d.id,...(d.data()||{})})); localStorage.setItem('ctrb_simulados_data',JSON.stringify(generatedSimulados)); if(typeof renderMainContent==='function' && currentMainTab==='moderacao') renderMainContent(); }
+
+  let unsubscribeSimulados = null;
+  let unsubscribeContentCatalog = null;
   let unsubscribeTopics = null;
   let unsubscribeQuestions = null;
   let unsubscribePublicConfig = null;
@@ -2392,17 +2476,21 @@
         error => console.error('Erro no listener da configuração pública:', error)
       );
     }
+
+    if (!unsubscribeSimulados) {
+      unsubscribeSimulados = onSnapshot(collection(db,'simulados'), snapshot=>applyCloudSimulados(snapshot.docs), error=>console.error('Erro no listener de simulados:',error));
+    }
+    if (!unsubscribeContentCatalog) {
+      unsubscribeContentCatalog = onSnapshot(doc(db,'configuracoes','conteudo'), snapshot=>{ if(snapshot.exists()) applyCloudContentCatalog(snapshot.data()); }, error=>console.error('Erro no listener do catálogo:',error));
+    }
   };
 
   async function initializeCloudContent() {
+    try { await migratePublicContentIfCloudIsEmpty(); } catch (err) { console.warn('Não foi possível migrar conteúdo local para o Firestore:', err); }
     try {
-      await migratePublicContentIfCloudIsEmpty();
-    } catch (err) {
-      console.warn('Não foi possível migrar conteúdo local para o Firestore:', err);
-    }
-
-    // Listener permanente: qualquer alteração do professor aparece
-    // automaticamente em todos os dispositivos conectados.
+      const catRef=doc(db,'configuracoes','conteudo'); const catSnap=await getDoc(catRef); if(!catSnap.exists()) await window.saveContentCatalogToCloud(disciplinesData);
+      const simSnap=await getDocs(collection(db,'simulados')); if(simSnap.empty && generatedSimulados.length) for(const sim of generatedSimulados) await window.saveSimuladoToCloud(sim);
+    } catch(err){ console.warn('Não foi possível inicializar catálogo/simulados:',err); }
     window.startPublicContentRealtime();
   }
 
