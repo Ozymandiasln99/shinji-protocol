@@ -1895,26 +1895,221 @@
             setTimeout(()=>alert(`Bloco finalizado: ${correct} acerto(s) em ${answered} questão(ões) respondida(s).`),50);
         }
         function renderPerformanceView(main) {
-            const uName=currentUser.name||'Visitante'; const key=currentStudentKey(); const studentPerf=multiStudentPerf[uName]||{}; const hist=studentHistory[key]||{}; const favMap=getFavoriteMap(); const times=studentQuestionTimes[key]||{}; const daily=studentDailyEvolution[key]||{};
-            let totalAcertos=0,totalErros=0,totalTentativas=0,totalSeconds=0,timeSamples=0;
-            topicsData.forEach(t=>{const st=studentPerf[t.id]||{acertos:0,erros:0};totalAcertos+=st.acertos;totalErros+=st.erros;});
-            Object.values(hist).forEach(a=>totalTentativas+=a.attempts||0);
-            Object.values(times).forEach(t=>{totalSeconds+=t.totalSeconds||0;timeSamples+=t.attempts||0;});
-            const totalRespondidas=totalAcertos+totalErros, taxa=totalRespondidas?Math.round(totalAcertos/totalRespondidas*100):0, avgTime=timeSamples?Math.round(totalSeconds/timeSamples):0;
-            const weak=topicsData.map(t=>{const st=studentPerf[t.id]||{acertos:0,erros:0};const tot=st.acertos+st.erros;return {...t,pct:tot?Math.round(st.acertos/tot*100):0,total:tot,acertos:st.acertos,erros:st.erros};}).sort((a,b)=>{if(a.total===0&&b.total!==0)return 1;if(b.total===0&&a.total!==0)return -1;return a.pct-b.pct;});
-            const review=Object.entries(hist).filter(([,a])=>a.lastResult==='erro').sort((a,b)=>(b[1].lastAt||'').localeCompare(a[1].lastAt||'')).slice(0,10);
-            const recent=Object.entries(hist).sort((a,b)=>(b[1].lastAt||'').localeCompare(a[1].lastAt||'')).slice(0,12);
-            const allQuestions={}; Object.values(masterQuestions).forEach(list=>(list||[]).forEach(q0=>{const q=normalizeQuestion(q0);allQuestions[q.id]=q;}));
-            const days=[]; for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
-            const maxDay=Math.max(1,...days.map(d=>daily[d]?.answered||0));
-            const heatDays=[]; for(let i=27;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const iso=d.toISOString().slice(0,10);heatDays.push([iso,daily[iso]||{answered:0,correct:0,errors:0}]);}
-            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Relatório de Evolução</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho</h2><p class="text-xs text-slate-500 dark:text-slate-400">Desempenho, velocidade e revisão reunidos em um só lugar.</p></div><div class="flex gap-2"><button onclick="switchMainTab('questoes');questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-900/50 text-xs font-bold">Revisão de erros (${review.length})</button><button onclick="switchMainTab('questoes');questionBankState.status='favoritas';questionBankState.page=1;saveQuestionBankState();" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold">Favoritas (${Object.keys(favMap).length})</button></div></div>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3"><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Taxa de acerto</div><div class="text-2xl font-black text-amber-500">${taxa}%</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Respondidas</div><div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Tentativas</div><div class="text-2xl font-black text-sky-500">${totalTentativas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Tempo médio</div><div class="text-2xl font-black text-violet-500">${avgTime}s</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Favoritas</div><div class="text-2xl font-black text-amber-500">${Object.keys(favMap).length}</div></div></div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Evolução — últimos 14 dias</h3><span class="text-[10px] text-slate-400">questões por dia</span></div><div class="grid grid-cols-14 gap-1 items-end h-28">${days.map(d=>{const n=daily[d]?.answered||0;const h=Math.max(4,Math.round(n/maxDay*88));return `<div class="flex flex-col justify-end items-center h-full gap-1"><span class="text-[9px] text-slate-400">${n||''}</span><div class="w-full rounded-sm bg-amber-500/70" style="height:${h}px"></div><span class="text-[8px] text-slate-400">${d.slice(8,10)}</span></div>`;}).join('')}</div></div>
-                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Calendário de consistência</h3><span class="text-[10px] text-slate-400">últimos 28 dias</span></div><div class="grid grid-cols-7 gap-1.5">${heatDays.map(([d,v])=>{const n=v.answered||0;const cls=n===0?'bg-slate-100 dark:bg-slate-800':n<3?'bg-amber-200 dark:bg-amber-900/50':n<6?'bg-amber-400 dark:bg-amber-700': 'bg-amber-600 dark:bg-amber-500'; return `<div title="${d}: ${n} questão(ões), ${v.correct||0} acerto(s)" class="h-6 rounded ${cls}"></div>`;}).join('')}</div></div></div>
-                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm">Desempenho por tópico e subtópico</h3><span class="text-[10px] text-slate-400">priorize os menores percentuais</span></div><div class="space-y-3">${weak.map(t=>`<div><div class="flex justify-between text-xs gap-2"><span class="font-semibold text-slate-700 dark:text-slate-200">${t.title}</span><span class="text-amber-500 font-bold">${t.pct}%</span></div><div class="w-full h-2 mt-1 rounded-full bg-slate-200 dark:bg-slate-700"><div class="h-2 rounded-full bg-amber-500" style="width:${t.pct}%"></div></div><div class="text-[10px] text-slate-400 mt-1">${t.acertos} acertos • ${t.erros} erros • ${t.total} respondidas</div></div>`).join('')}</div></div>
-                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex flex-wrap justify-between items-center gap-2 mb-3"><div><h3 class="font-bold text-sm">Revisão inteligente</h3><p class="text-[10px] text-slate-400">Comece pelos erros mais recentes e pelos tópicos com menor aproveitamento.</p></div><button onclick="switchMainTab('questoes');questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="text-xs font-bold text-amber-500">Abrir fila de revisão</button></div><div class="space-y-2">${weak.filter(t=>t.total>0).slice(0,5).map(t=>`<button onclick="switchMainTab('questoes');questionBankState.subtopic='${t.id}';questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-500/50"><div class="text-xs font-bold text-slate-800 dark:text-slate-100">${t.title}</div><div class="text-[10px] text-slate-400 mt-1">${t.erros} erro(s) • ${t.pct}% de acerto</div></button>`).join('')||'<p class="text-xs text-slate-400">Resolva algumas questões para gerar uma fila de revisão personalizada.</p>'}</div></div>
-                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center gap-3 mb-3"><h3 class="font-bold text-sm">Histórico recente</h3><span class="text-[10px] text-slate-400">tempo da última tentativa</span></div><div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr class="border-b border-slate-200 dark:border-slate-800"><th class="p-2">Questão</th><th class="p-2">Tentativas</th><th class="p-2">Resultado</th><th class="p-2">Tempo</th><th class="p-2">Última vez</th></tr></thead><tbody>${recent.map(([qid,a])=>`<tr class="border-b border-slate-100 dark:border-slate-800"><td class="p-2 font-semibold">${allQuestions[qid]?.statement?.slice(0,80)||qid}${(allQuestions[qid]?.statement?.length||0)>80?'…':''}</td><td class="p-2">${a.attempts||0}</td><td class="p-2 font-bold ${a.lastResult==='acerto'?'text-emerald-500':'text-red-500'}">${a.lastResult==='acerto'?'Acertou':'Errou'}</td><td class="p-2">${a.lastSeconds||0}s</td><td class="p-2 text-slate-400">${a.lastAt?new Date(a.lastAt).toLocaleString('pt-BR'):''}</td></tr>`).join('')||'<tr><td colspan="5" class="p-4 text-center text-slate-400">Nenhuma questão respondida ainda.</td></tr>'}</tbody></table></div></div></div>`;
+            const userName = currentUser && currentUser.name ? currentUser.name : 'Visitante';
+            const studentKey = typeof currentStudentKey === 'function' ? currentStudentKey() : String((currentUser && (currentUser.email || currentUser.name)) || 'visitante').toLowerCase();
+            const performance = (multiStudentPerf && multiStudentPerf[userName]) || {};
+            const history = (studentHistory && studentHistory[studentKey]) || {};
+            const favorites = typeof getFavoriteMap === 'function' ? (getFavoriteMap() || {}) : {};
+            const times = (studentQuestionTimes && studentQuestionTimes[studentKey]) || {};
+            const daily = (studentDailyEvolution && studentDailyEvolution[studentKey]) || {};
+
+            let totalCorrect = 0;
+            let totalErrors = 0;
+            let totalAttempts = 0;
+            let totalSeconds = 0;
+            let totalTimeSamples = 0;
+
+            Object.values(performance).forEach(stat => {
+                totalCorrect += Number(stat && stat.acertos) || 0;
+                totalErrors += Number(stat && stat.erros) || 0;
+            });
+
+            Object.values(history).forEach(item => {
+                totalAttempts += Number(item && item.attempts) || 0;
+            });
+
+            Object.values(times).forEach(item => {
+                totalSeconds += Number(item && item.totalSeconds) || 0;
+                totalTimeSamples += Number(item && item.attempts) || 0;
+            });
+
+            const totalAnswered = totalCorrect + totalErrors;
+            const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+            const averageSeconds = totalTimeSamples > 0 ? Math.round(totalSeconds / totalTimeSamples) : 0;
+            const favoriteCount = Object.keys(favorites).length;
+
+            const topicStats = (Array.isArray(topicsData) ? topicsData : []).map(topic => {
+                const stat = performance[topic.id] || { acertos: 0, erros: 0 };
+                const correct = Number(stat.acertos) || 0;
+                const errors = Number(stat.erros) || 0;
+                const answered = correct + errors;
+                return {
+                    id: topic.id,
+                    title: topic.title || topic.id,
+                    correct,
+                    errors,
+                    answered,
+                    percent: answered > 0 ? Math.round((correct / answered) * 100) : 0
+                };
+            });
+
+            const weakestTopics = topicStats
+                .filter(item => item.answered > 0)
+                .sort((a, b) => a.percent - b.percent || b.errors - a.errors)
+                .slice(0, 5);
+
+            const recentEntries = Object.entries(history)
+                .sort((a, b) => String((b[1] && b[1].lastAt) || '').localeCompare(String((a[1] && a[1].lastAt) || '')))
+                .slice(0, 10);
+
+            const errorCount = Object.values(history).filter(item => item && item.lastResult === 'erro').length;
+
+            const allQuestions = {};
+            Object.entries(masterQuestions || {}).forEach(([topicId, list]) => {
+                (Array.isArray(list) ? list : []).forEach(rawQuestion => {
+                    const question = typeof normalizeQuestion === 'function' ? normalizeQuestion(rawQuestion, topicId) : rawQuestion;
+                    if (question && question.id) allQuestions[question.id] = question;
+                });
+            });
+
+            const days = [];
+            for (let offset = 13; offset >= 0; offset--) {
+                const date = new Date();
+                date.setHours(12, 0, 0, 0);
+                date.setDate(date.getDate() - offset);
+                days.push(date.toISOString().slice(0, 10));
+            }
+
+            const maxDaily = Math.max(1, ...days.map(day => Number(daily[day] && daily[day].answered) || 0));
+
+            const heatDays = [];
+            for (let offset = 27; offset >= 0; offset--) {
+                const date = new Date();
+                date.setHours(12, 0, 0, 0);
+                date.setDate(date.getDate() - offset);
+                const iso = date.toISOString().slice(0, 10);
+                heatDays.push({
+                    date: iso,
+                    answered: Number(daily[iso] && daily[iso].answered) || 0,
+                    correct: Number(daily[iso] && daily[iso].correct) || 0,
+                    errors: Number(daily[iso] && daily[iso].errors) || 0
+                });
+            }
+
+            const formatDate = value => {
+                if (!value) return '—';
+                const date = new Date(value);
+                return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('pt-BR');
+            };
+
+            const questionBankToErrors = `switchMainTab('questoes'); questionBankState.status='errei'; questionBankState.page=1; saveQuestionBankState();`;
+            const questionBankToFavorites = `switchMainTab('questoes'); questionBankState.status='favoritas'; questionBankState.page=1; saveQuestionBankState();`;
+
+            const dailyBars = days.map(day => {
+                const count = Number(daily[day] && daily[day].answered) || 0;
+                const height = count > 0 ? Math.max(8, Math.round((count / maxDaily) * 82)) : 4;
+                return `
+                    <div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-1 h-32" title="${day}: ${count} questão(ões)">
+                        <span class="text-[9px] font-semibold text-slate-400">${count || ''}</span>
+                        <div class="w-full max-w-6 rounded-t-md bg-amber-500/80" style="height:${height}px"></div>
+                        <span class="text-[8px] text-slate-400">${day.slice(8,10)}</span>
+                    </div>`;
+            }).join('');
+
+            const heatmap = heatDays.map(item => {
+                let className = 'bg-slate-100 dark:bg-slate-800';
+                if (item.answered >= 1 && item.answered < 3) className = 'bg-amber-200 dark:bg-amber-900';
+                else if (item.answered >= 3 && item.answered < 6) className = 'bg-amber-400 dark:bg-amber-700';
+                else if (item.answered >= 6) className = 'bg-amber-600 dark:bg-amber-500';
+                return `<div class="h-7 w-full rounded-md ${className} border border-slate-200/50 dark:border-slate-700/50" title="${item.date}: ${item.answered} respondida(s), ${item.correct} acerto(s), ${item.errors} erro(s)"></div>`;
+            }).join('');
+
+            const topicRows = (topicStats.length ? topicStats : []).map(item => {
+                const width = item.percent > 0 ? item.percent : 0;
+                const statusText = item.answered === 0 ? 'Ainda sem respostas' : `${item.correct} acerto(s) • ${item.errors} erro(s) • ${item.answered} respondida(s)`;
+                return `
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between gap-3 text-xs">
+                            <span class="min-w-0 truncate font-semibold text-slate-700 dark:text-slate-200">${item.title}</span>
+                            <span class="shrink-0 font-black ${item.answered === 0 ? 'text-slate-400' : 'text-amber-500'}">${item.percent}%</span>
+                        </div>
+                        <div class="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div class="h-full rounded-full bg-amber-500 transition-all" style="width:${width}%"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-400">${statusText}</div>
+                    </div>`;
+            }).join('');
+
+            const weakCards = weakestTopics.length ? weakestTopics.map(item => `
+                <button type="button" onclick="switchMainTab('questoes'); questionBankState.subtopic='${item.id}'; questionBankState.status='errei'; questionBankState.page=1; saveQuestionBankState();"
+                    class="w-full rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-left transition hover:border-amber-500/60 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="min-w-0 truncate text-xs font-bold text-slate-800 dark:text-slate-100">${item.title}</span>
+                        <span class="shrink-0 text-xs font-black text-red-500">${item.percent}%</span>
+                    </div>
+                    <div class="mt-1 text-[10px] text-slate-400">${item.errors} erro(s) • ${item.answered} respondida(s)</div>
+                </button>
+            `).join('') : '<p class="text-xs text-slate-400">Resolva algumas questões para gerar sua revisão personalizada.</p>';
+
+            const historyRows = recentEntries.length ? recentEntries.map(([questionId, item]) => {
+                const question = allQuestions[questionId];
+                const text = question && question.statement ? String(question.statement).replace(/<[^>]*>/g, '').slice(0, 90) : questionId;
+                const result = item && item.lastResult === 'acerto';
+                return `
+                    <tr class="border-b border-slate-100 dark:border-slate-800">
+                        <td class="max-w-[420px] p-2.5 text-slate-700 dark:text-slate-200">${text}${question && question.statement && String(question.statement).length > 90 ? '…' : ''}</td>
+                        <td class="p-2.5 text-center">${Number(item.attempts) || 0}</td>
+                        <td class="p-2.5 text-center font-bold ${result ? 'text-emerald-500' : 'text-red-500'}">${result ? 'Acertou' : 'Errou'}</td>
+                        <td class="p-2.5 text-center">${Number(item.lastSeconds) || 0}s</td>
+                        <td class="whitespace-nowrap p-2.5 text-slate-400">${formatDate(item.lastAt)}</td>
+                    </tr>`;
+            }).join('') : '<tr><td colspan="5" class="p-6 text-center text-xs text-slate-400">Nenhuma questão respondida ainda.</td></tr>';
+
+            main.innerHTML = `
+                <div class="space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                        <div>
+                            <span class="inline-flex rounded-full bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 text-[10px] font-bold uppercase text-amber-800 dark:text-amber-300">Relatório de Evolução</span>
+                            <h2 class="mt-1 text-xl font-bold text-slate-800 dark:text-slate-100">Seu Desempenho</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Acompanhe rendimento, ritmo e pontos que merecem revisão.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="${questionBankToErrors}" class="rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-300">Revisar erros (${errorCount})</button>
+                            <button type="button" onclick="${questionBankToFavorites}" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200">Favoritas (${favoriteCount})</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 md:grid-cols-5">
+                        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"><div class="text-[10px] font-bold uppercase text-slate-400">Taxa de acerto</div><div class="mt-1 text-2xl font-black text-amber-500">${accuracy}%</div></div>
+                        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"><div class="text-[10px] font-bold uppercase text-slate-400">Respondidas</div><div class="mt-1 text-2xl font-black text-slate-800 dark:text-slate-100">${totalAnswered}</div></div>
+                        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"><div class="text-[10px] font-bold uppercase text-slate-400">Tentativas</div><div class="mt-1 text-2xl font-black text-sky-500">${totalAttempts}</div></div>
+                        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"><div class="text-[10px] font-bold uppercase text-slate-400">Tempo médio</div><div class="mt-1 text-2xl font-black text-violet-500">${averageSeconds}s</div></div>
+                        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"><div class="text-[10px] font-bold uppercase text-slate-400">Favoritas</div><div class="mt-1 text-2xl font-black text-amber-500">${favoriteCount}</div></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                            <div class="mb-4 flex items-center justify-between gap-3"><h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Evolução diária</h3><span class="text-[10px] text-slate-400">últimos 14 dias</span></div>
+                            <div class="flex w-full items-end gap-1 overflow-hidden" style="min-height:150px">${dailyBars}</div>
+                        </section>
+                        <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                            <div class="mb-4 flex items-center justify-between gap-3"><h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Consistência</h3><span class="text-[10px] text-slate-400">últimos 28 dias</span></div>
+                            <div class="grid grid-cols-7 gap-1.5">${heatmap}</div>
+                            <div class="mt-3 flex items-center justify-between text-[10px] text-slate-400"><span>menos atividade</span><span>mais atividade</span></div>
+                        </section>
+                    </div>
+
+                    <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Desempenho por tópico e subtópico</h3><p class="text-[10px] text-slate-400">Use os menores percentuais como prioridade de estudo.</p></div></div>
+                        <div class="space-y-4">${topicRows || '<p class="text-xs text-slate-400">Nenhum tópico disponível.</p>'}</div>
+                    </section>
+
+                    <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Foco de revisão</h3><p class="text-[10px] text-slate-400">Atalhos para os tópicos em que seu aproveitamento está mais baixo.</p></div><button type="button" onclick="${questionBankToErrors}" class="text-xs font-bold text-amber-500">Abrir revisão de erros</button></div>
+                        <div class="grid grid-cols-1 gap-2 md:grid-cols-2">${weakCards}</div>
+                    </section>
+
+                    <section class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                        <div class="mb-4 flex items-center justify-between gap-3"><h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Histórico recente</h3><span class="text-[10px] text-slate-400">últimas tentativas</span></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse text-xs">
+                                <thead><tr class="border-b border-slate-200 dark:border-slate-800 text-left text-slate-500 dark:text-slate-400"><th class="p-2.5">Questão</th><th class="p-2.5 text-center">Tentativas</th><th class="p-2.5 text-center">Resultado</th><th class="p-2.5 text-center">Tempo</th><th class="p-2.5">Última vez</th></tr></thead>
+                                <tbody>${historyRows}</tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            `;
         }
 
         // PAINEL DO PROFESSOR ATUALIZADO (DESEMPENHO + CRONOGRAMA DOS ALUNOS)
