@@ -56,6 +56,16 @@
         .dark .ql-picker { color: #cbd5e1 !important; }
         .ql-container { border-radius: 0 0 0.5rem 0.5rem; background-color: #ffffff; }
         .dark .ql-container { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+    
+        select, input, textarea { color-scheme: light; }
+        .dark select, .dark input, .dark textarea { color-scheme: dark; }
+        .question-option { background-color:#ffffff; border-color:#e2e8f0; color:#334155; }
+        .dark .question-option { background-color:#111827; border-color:#475569; color:#e5e7eb; }
+        .question-option:hover { border-color:#f59e0b; background-color:#fffbeb; }
+        .dark .question-option:hover { border-color:#f59e0b; background-color:#1f2937; }
+        #sidebar-container { display:none !important; }
+        .question-option input { accent-color:#f59e0b; }
+        .favorite-active { color:#f59e0b !important; }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
@@ -105,10 +115,10 @@
     </header>
 
     <!-- MAIN APP CONTAINER -->
-    <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-6 p-4 md:p-6">
+    <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col p-4 md:p-6">
         
         <!-- SIDEBAR COM SUBTÓPICOS -->
-        <aside id="sidebar-container" class="w-full md:w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 flex flex-col h-auto md:h-[calc(100vh-120px)] md:sticky md:top-24 transition-colors">
+        <aside id="sidebar-container" class="hidden">
             <div class="mb-3 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <h2 class="font-bold text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-layer-group text-amber-500"></i> Subtópicos do Edital
@@ -340,6 +350,10 @@
                     <input type="text" id="edit-topic-yt" placeholder="Ex: fA-5rX3rV44 ou https://www.youtube.com/playlist?list=PL..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Link clicável para abrir no YouTube</label>
+                    <input type="url" id="edit-topic-yt-link" placeholder="https://www.youtube.com/watch?v=... ou https://www.youtube.com/playlist?list=..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Material Teórico</label>
                     <div id="quill-editor-topic" class="min-h-[220px]"></div>
                 </div>
@@ -507,9 +521,13 @@
         // pelo administrador/moderadores; os subtópicos continuam sendo os módulos do edital.
         let disciplinesData = JSON.parse(localStorage.getItem('ctrb_disciplines_data')) || ['Matemática'];
         let questionBankState = JSON.parse(localStorage.getItem('ctrb_question_bank_state')) || {
-            discipline: 'Todos', subtopic: 'Todos', type: 'Todos', difficulty: 'Todos', keyword: '', pageSize: 10, page: 1
+            discipline: 'Todos', subtopic: 'Todos', type: 'Todos', difficulty: 'Todos', keyword: '', pageSize: 10, page: 1,
+            status: 'Todos', mode: 'treino'
         };
         let generatedSimulados = JSON.parse(localStorage.getItem('ctrb_simulados_data')) || [];
+        let studentFavorites = JSON.parse(localStorage.getItem('ctrb_student_favorites')) || {};
+        let studentHistory = JSON.parse(localStorage.getItem('ctrb_student_history')) || {};
+        let studentNotes = JSON.parse(localStorage.getItem('ctrb_student_notes')) || {};
 
         function isAdmin() { return currentUser && currentUser.role === 'admin'; }
         function isModerator() { return currentUser && currentUser.role === 'moderador'; }
@@ -521,6 +539,28 @@
             const type = q.type || ((Array.isArray(q.options) && q.options.length === 2 && q.options[0] === 'Certo' && q.options[1] === 'Errado') ? 'certo_errado' : 'multipla');
             return { ...q, topicId, discipline: q.discipline || (topic && topic.discipline) || 'Matemática', type, options: type === 'certo_errado' ? ['Certo', 'Errado'] : (Array.isArray(q.options) && q.options.length ? q.options : ['', '', '', '', '']) };
         }
+
+        function currentStudentKey(){ return String(currentUser?.email || currentUser?.name || 'visitante').toLowerCase(); }
+        function getFavoriteMap(){ return studentFavorites[currentStudentKey()] || {}; }
+        function isFavorite(qId){ return !!getFavoriteMap()[qId]; }
+        function saveStudentActivityCloud(){
+            if((currentUser?.role==='aluno' || currentUser?.role==='moderador') && window.saveStudentStateToCloud){
+                const student = registeredStudents.find(s => String(s.email||'').toLowerCase()===String(currentUser.email||'').toLowerCase()) || currentUser;
+                window.saveStudentStateToCloud(student,{ favorites:getFavoriteMap(), history:studentHistory[currentStudentKey()]||{}, notes:studentNotes[currentStudentKey()]||{} }).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
+            }
+        }
+        function toggleFavorite(qId){
+            if(currentUser.role==='visitante'){ alert('Faça login para salvar questões favoritas.'); openAuthModal(); return; }
+            const key=currentStudentKey(); if(!studentFavorites[key]) studentFavorites[key]={};
+            studentFavorites[key][qId]=!studentFavorites[key][qId]; if(!studentFavorites[key][qId]) delete studentFavorites[key][qId];
+            localStorage.setItem('ctrb_student_favorites',JSON.stringify(studentFavorites)); saveStudentActivityCloud(); renderMainContent();
+        }
+        function saveQuestionNote(qId,value){
+            const key=currentStudentKey(); if(!studentNotes[key]) studentNotes[key]={};
+            if(value.trim()) studentNotes[key][qId]=value.trim(); else delete studentNotes[key][qId];
+            localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); saveStudentActivityCloud();
+        }
+        function getQuestionActivity(qId){ return (studentHistory[currentStudentKey()]||{})[qId] || {attempts:0,correct:0,lastResult:null,lastAt:null}; }
 
         function getYoutubeEmbedUrl(input) {
             if (!input) return '';
@@ -1026,7 +1066,7 @@
             renderMainContent();
         }
 
-        function saveQuestionBankState(){ localStorage.setItem('ctrb_question_bank_state', JSON.stringify(questionBankState)); renderMainContent(); }
+        function saveQuestionBankState(){ questionBankState.mode=questionBankState.mode||'treino'; questionBankState.status=questionBankState.status||'Todos'; localStorage.setItem('ctrb_question_bank_state', JSON.stringify(questionBankState)); renderMainContent(); }
 
         function selectSubTopic(subId) {
             currentSubTopicId = subId;
@@ -1105,25 +1145,54 @@
                             <div><label class="text-[10px] font-bold uppercase text-slate-500">Disciplina</label><select onchange="questionBankState.discipline=this.value; questionBankState.subtopic='Todos'; localStorage.setItem('ctrb_question_bank_state',JSON.stringify(questionBankState)); renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${availableDisciplines.map(d=>`<option ${d===activeDiscipline?'selected':''}>${d}</option>`).join('')}</select></div>
                             <div><label class="text-[10px] font-bold uppercase text-slate-500">Tópico / Subtópico</label><select onchange="currentSubTopicId=this.value; renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${disciplineTopics.map(t=>`<option value="${t.id}" ${t.id===currentSubTopicId?'selected':''}>${t.title}</option>`).join('')}</select></div>
                         </div>
-                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${activeTopic.theory || '<p>Material ainda não cadastrado.</p>'}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950">${embedUrl ? `<iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allowfullscreen></iframe>` : '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div>'}</div></div></div>` : ''}
+                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${activeTopic.theory || '<p>Material ainda não cadastrado.</p>'}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950">${embedUrl ? `<iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allowfullscreen></iframe>` : '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div>'}</div>${activeTopic?.youtubeLink?`<a href="${activeTopic.youtubeLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400"><i class="fa-brands fa-youtube"></i> Link do vídeo / playlist no YouTube</a>`:''}</div></div>` : ''}
                     </div>`;
             }
             else if (currentMainTab === 'questoes') {
-                const filtered = [];
-                Object.entries(masterQuestions).forEach(([topicId,list]) => (list||[]).forEach(q0=>{ const q=normalizeQuestion(q0,topicId); const t=topicsData.find(x=>x.id===topicId); const discipline=(q.discipline||(t?.discipline)||'Matemática'); const okD=questionBankState.discipline==='Todos'||discipline===questionBankState.discipline; const okT=questionBankState.subtopic==='Todos'||topicId===questionBankState.subtopic; const okTy=questionBankState.type==='Todos'||q.type===questionBankState.type; const okDf=questionBankState.difficulty==='Todos'||q.difficulty===questionBankState.difficulty; const kw=(questionBankState.keyword||'').toLowerCase(); const okK=!kw||(q.statement||'').toLowerCase().includes(kw)||(q.explanation||'').toLowerCase().includes(kw); if(okD&&okT&&okTy&&okDf&&okK) filtered.push(q); }));
-                const pageSize = Number(questionBankState.pageSize)||10; const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize)); if(questionBankState.page>totalPages) questionBankState.page=totalPages; const startIdx=(questionBankState.page-1)*pageSize; const pageItems=filtered.slice(startIdx,startIdx+pageSize);
-                main.innerHTML=`<div class="space-y-6"><div class="border-b border-slate-200 dark:border-slate-800 pb-4"><div class="flex flex-wrap justify-between items-center gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Questões</span><h2 class="text-xl font-bold mt-1">Pratique por disciplina, subtópico e tipo</h2></div>${canManageContent()?`<button onclick="openAddQuestionModal()" class="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ Adicionar Questão</button>`:''}</div></div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2 p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
-                        <select onchange="questionBankState.discipline=this.value; questionBankState.subtopic='Todos'; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option>Todos</option>${disciplinesData.map(d=>`<option ${questionBankState.discipline===d?'selected':''}>${d}</option>`).join('')}</select>
-                        <select onchange="questionBankState.subtopic=this.value; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option value="Todos">Todos os subtópicos</option>${topicsData.filter(t=>questionBankState.discipline==='Todos'||(t.discipline||'Matemática')===questionBankState.discipline).map(t=>`<option value="${t.id}" ${questionBankState.subtopic===t.id?'selected':''}>${t.title}</option>`).join('')}</select>
-                        <select onchange="questionBankState.type=this.value; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option value="Todos">Todos os tipos</option><option value="multipla" ${questionBankState.type==='multipla'?'selected':''}>Múltipla escolha</option><option value="certo_errado" ${questionBankState.type==='certo_errado'?'selected':''}>Certo ou Errado</option></select>
-                        <select onchange="questionBankState.difficulty=this.value; questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs"><option>Todos</option>${['Fácil','Média','Difícil'].map(d=>`<option ${questionBankState.difficulty===d?'selected':''}>${d}</option>`).join('')}</select>
-                        <input value="${questionBankState.keyword||''}" oninput="questionBankState.keyword=this.value" onkeydown="if(event.key==='Enter'){questionBankState.page=1;saveQuestionBankState();}" placeholder="Palavra-chave" class="px-2.5 py-2 rounded-lg border text-xs">
-                        <select onchange="questionBankState.pageSize=Number(this.value); questionBankState.page=1; saveQuestionBankState();" class="px-2.5 py-2 rounded-lg border text-xs">${[1,10,20,50].map(n=>`<option value="${n}" ${pageSize===n?'selected':''}>${n} por página</option>`).join('')}</select>
+                const activeKey=currentStudentKey(); const favMap=getFavoriteMap(); const hist=studentHistory[activeKey]||{};
+                const filtered=[];
+                Object.entries(masterQuestions).forEach(([topicId,list]) => (list||[]).forEach(q0=>{
+                    const q=normalizeQuestion(q0,topicId); const t=topicsData.find(x=>x.id===topicId);
+                    const discipline=q.discipline||(t?.discipline)||'Matemática';
+                    const activity=hist[q.id]||{};
+                    const answered=!!activity.attempts; const result=activity.lastResult;
+                    const okD=questionBankState.discipline==='Todos'||discipline===questionBankState.discipline;
+                    const okT=questionBankState.subtopic==='Todos'||topicId===questionBankState.subtopic;
+                    const okTy=questionBankState.type==='Todos'||q.type===questionBankState.type;
+                    const okDf=questionBankState.difficulty==='Todos'||q.difficulty===questionBankState.difficulty;
+                    const okS=questionBankState.status==='Todos'||(questionBankState.status==='nao_resolvidas'&&!answered)||(questionBankState.status==='acertei'&&result==='acerto')||(questionBankState.status==='errei'&&result==='erro')||(questionBankState.status==='favoritas'&&!!favMap[q.id]);
+                    const kw=(questionBankState.keyword||'').toLowerCase();
+                    const okK=!kw||(q.statement||'').toLowerCase().includes(kw)||(q.explanation||'').toLowerCase().includes(kw);
+                    if(okD&&okT&&okTy&&okDf&&okS&&okK) filtered.push(q);
+                }));
+                const pageSize=Number(questionBankState.pageSize)||10; const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize)); if(questionBankState.page>totalPages) questionBankState.page=totalPages;
+                const startIdx=(questionBankState.page-1)*pageSize; const pageItems=filtered.slice(startIdx,startIdx+pageSize);
+                const reset=()=>{questionBankState.page=1;saveQuestionBankState();};
+                const optionLabel=q=>q.type==='certo_errado'?'Certo / Errado':'Alternativa';
+                const renderQuestion=(q,idx)=>{ const activity=getQuestionActivity(q.id); const note=((studentNotes[activeKey]||{})[q.id]||'').replace(/"/g,'&quot;'); return `<article class="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4" id="question-${q.id}">
+                    <div class="flex flex-wrap justify-between items-center gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${optionLabel(q)}</span>${activity.attempts?`<span class="text-[10px] px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">${activity.attempts} tentativa(s)</span>`:''}</div>
+                    <div class="flex items-center gap-2">${currentUser.role!=='visitante'?`<button onclick="toggleFavorite('${q.id}')" title="${isFavorite(q.id)?'Remover dos favoritos':'Salvar nos favoritos'}" class="text-slate-400 hover:text-amber-500 p-1"><i class="fa-star ${isFavorite(q.id)?'fa-solid favorite-active':'fa-regular'}"></i></button>`:''}${canManageContent()?`<button onclick="openEditQuestionModal('${q.topicId}','${q.id}')" class="text-xs text-slate-400 hover:text-amber-500">Editar</button><button onclick="deleteQuestion('${q.topicId}','${q.id}')" class="text-xs text-red-400">Excluir</button>`:''}</div></div>
+                    <p class="text-sm font-medium text-slate-800 dark:text-slate-100">${q.statement}</p>
+                    <div class="space-y-2">${q.options.map((opt,i)=>`<label class="question-option flex items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${opt}</span></label>`).join('')}</div>
+                    <div class="flex flex-wrap gap-2"><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-700 text-white dark:text-amber-300 text-xs font-bold px-4 py-2 rounded-xl">${questionBankState.mode==='prova'?'Registrar resposta':'Responder e Ver Gabarito'}</button>${currentUser.role!=='visitante'?`<button onclick="focusQuestionNote('${q.id}')" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-note-sticky"></i> Anotação</button>`:''}</div>
+                    ${currentUser.role!=='visitante'?`<input id="note_${q.id}" value="${note}" onchange="saveQuestionNote('${q.id}',this.value)" placeholder="Anote seu raciocínio, dúvida ou ponto para revisar..." class="hidden w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200">`:''}
+                    <div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div>
+                </article>`; };
+                main.innerHTML=`<div class="space-y-6"><div class="border-b border-slate-200 dark:border-slate-800 pb-4"><div class="flex flex-wrap justify-between items-center gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Questões</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Pratique, revise e acompanhe sua evolução</h2></div>${canManageContent()?`<button onclick="openAddQuestionModal()" class="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ Adicionar Questão</button>`:''}</div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/60 dark:bg-slate-900/70">
+                        <select onchange="questionBankState.discipline=this.value;questionBankState.subtopic='Todos';resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs"><option>Todos</option>${disciplinesData.map(d=>`<option ${questionBankState.discipline===d?'selected':''}>${d}</option>`).join('')}</select>
+                        <select onchange="questionBankState.subtopic=this.value;resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs"><option value="Todos">Todos os subtópicos</option>${topicsData.filter(t=>questionBankState.discipline==='Todos'||(t.discipline||'Matemática')===questionBankState.discipline).map(t=>`<option value="${t.id}" ${questionBankState.subtopic===t.id?'selected':''}>${t.title}</option>`).join('')}</select>
+                        <select onchange="questionBankState.type=this.value;resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs"><option value="Todos">Todos os tipos</option><option value="multipla" ${questionBankState.type==='multipla'?'selected':''}>Múltipla escolha</option><option value="certo_errado" ${questionBankState.type==='certo_errado'?'selected':''}>Certo ou Errado</option></select>
+                        <select onchange="questionBankState.difficulty=this.value;resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs"><option>Todos</option>${['Fácil','Média','Difícil'].map(d=>`<option ${questionBankState.difficulty===d?'selected':''}>${d}</option>`).join('')}</select>
+                        <select onchange="questionBankState.status=this.value;resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs"><option value="Todos">Todas as questões</option><option value="nao_resolvidas" ${questionBankState.status==='nao_resolvidas'?'selected':''}>Não resolvidas</option><option value="acertei" ${questionBankState.status==='acertei'?'selected':''}>Acertei</option><option value="errei" ${questionBankState.status==='errei'?'selected':''}>Errei</option><option value="favoritas" ${questionBankState.status==='favoritas'?'selected':''}>Favoritas</option></select>
+                        <input value="${questionBankState.keyword||''}" oninput="questionBankState.keyword=this.value" onkeydown="if(event.key==='Enter'){resetQuestionBankPage();}" placeholder="Buscar no enunciado" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs">
+                        <select onchange="questionBankState.pageSize=Number(this.value);resetQuestionBankPage();" class="filter-input px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs">${[1,10,20,50].map(n=>`<option value="${n}" ${pageSize===n?'selected':''}>${n} por página</option>`).join('')}</select>
                     </div>
-                    <div class="flex items-center justify-between text-xs"><b>${filtered.length} questão(ões) encontrada(s)</b><span>Página ${questionBankState.page} de ${totalPages}</span></div>
-                    <div class="space-y-5">${pageItems.map((q,idx)=>`<div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4"><div class="flex flex-wrap justify-between gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 text-amber-800">${q.type==='certo_errado'?'CERTO / ERRADO':'MÚLTIPLA'}</span><span class="text-[10px] text-slate-400">${q.difficulty||'Média'}</span></div>${canManageContent()?`<div class="flex gap-2"><button onclick="openEditQuestionModal('${q.topicId}','${q.id}')" class="text-xs text-slate-400 hover:text-amber-500">Editar</button><button onclick="deleteQuestion('${q.topicId}','${q.id}')" class="text-xs text-red-400">Excluir</button></div>`:''}</div><p class="text-sm font-medium">${q.statement}</p><div class="space-y-2">${q.options.map((opt,i)=>`<label class="flex items-center gap-3 text-xs p-2.5 rounded-xl border cursor-pointer"><input type="radio" name="opt_${q.id}" value="${i}"><span>${opt}</span></label>`).join('')}</div><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl">Responder e Ver Gabarito</button><div id="feedback_${q.id}" class="hidden text-xs p-4 rounded-xl border mt-2"></div></div>`).join('') || '<p class="text-xs text-slate-400">Nenhuma questão corresponde aos filtros.</p>'}</div>
-                    <div class="flex justify-center items-center gap-2"><button onclick="questionBankState.page=Math.max(1,questionBankState.page-1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border text-xs">Anterior</button><span class="px-3 text-xs font-bold">${questionBankState.page}/${totalPages}</span><button onclick="questionBankState.page=Math.min(${totalPages},questionBankState.page+1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border text-xs">Próxima</button></div></div>`;
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs"><b class="text-slate-800 dark:text-slate-200">${filtered.length} questão(ões) encontrada(s)</b><div class="flex items-center gap-2"><span class="text-slate-500">Modo</span><button onclick="questionBankState.mode=questionBankState.mode==='prova'?'treino':'prova';saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold ${questionBankState.mode==='prova'?'bg-amber-500 text-slate-950':'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">${questionBankState.mode==='prova'?'Modo Prova':'Modo Treino'}</button><span>Página ${questionBankState.page} de ${totalPages}</span></div></div>
+                    <div class="space-y-5">${pageItems.map(renderQuestion).join('')||'<div class="text-center py-12 text-xs text-slate-400">Nenhuma questão corresponde aos filtros.</div>'}</div>
+                    ${questionBankState.mode==='prova'&&pageItems.length?`<div class="flex justify-end"><button onclick="finishQuestionBlock(${pageItems.map(q=>`'${q.id}'`).join(',')})" class="bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs">Finalizar bloco e ver resultados</button></div>`:''}
+                    <div class="flex justify-center items-center gap-2"><button onclick="questionBankState.page=Math.max(1,questionBankState.page-1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">Anterior</button><span class="px-3 text-xs font-bold text-slate-700 dark:text-slate-300">${questionBankState.page}/${totalPages}</span><button onclick="questionBankState.page=Math.min(${totalPages},questionBankState.page+1);saveQuestionBankState();" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs">Próxima</button></div></div>`;
+                if(window.MathJax) MathJax.typesetPromise();
             }
             else if (currentMainTab === 'simulados') {
                 renderSimuladoView(main);
@@ -1154,8 +1223,8 @@
         }
 
         async function setUserRole(email, role){ if(!isAdmin()) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; st.role=role; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); if(window.updateStudentRoleInCloud) await window.updateStudentRoleInCloud(st,role); updateUserUI(); renderMainContent(); }
-        async function clearStudentPerformance(name){ if(!isAdmin()) return; if(!confirm('Limpar todo o desempenho deste usuário?')) return; delete multiStudentPerf[name]; localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); const st=registeredStudents.find(s=>s.name===name); if(st&&window.saveStudentStateToCloud) await window.saveStudentStateToCloud(st,{performance:{}}); renderMainContent(); }
-        async function deleteManagedStudent(email){ if(!isAdmin()) return; if(!confirm('Excluir este usuário e seus dados locais/nuvem?')) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; registeredStudents=registeredStudents.filter(s=>s!==st); window.registeredStudents=registeredStudents; delete multiStudentPerf[st.name]; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); if(window.deleteStudentFromCloud) await window.deleteStudentFromCloud(st.email); renderMainContent(); }
+        async function clearStudentPerformance(name){ if(!isAdmin()) return; if(!confirm('Limpar todo o desempenho e histórico deste usuário?')) return; delete multiStudentPerf[name]; const st=registeredStudents.find(s=>s.name===name); const key=String(st?.email||name||'').toLowerCase(); delete studentHistory[key]; localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); if(st&&window.saveStudentStateToCloud) await window.saveStudentStateToCloud(st,{performance:{},history:{}}); renderMainContent(); }
+        async function deleteManagedStudent(email){ if(!isAdmin()) return; if(!confirm('Excluir este usuário e seus dados locais/nuvem?')) return; const st=registeredStudents.find(s=>String(s.email).toLowerCase()===String(email).toLowerCase()); if(!st) return; const key=String(st.email||st.name||'').toLowerCase(); registeredStudents=registeredStudents.filter(s=>s!==st); window.registeredStudents=registeredStudents; delete multiStudentPerf[st.name]; delete studentFavorites[key]; delete studentHistory[key]; delete studentNotes[key]; localStorage.setItem('ctrb_students_db',JSON.stringify(registeredStudents)); localStorage.setItem('ctrb_multi_perf',JSON.stringify(multiStudentPerf)); localStorage.setItem('ctrb_student_favorites',JSON.stringify(studentFavorites)); localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); if(window.deleteStudentFromCloud) await window.deleteStudentFromCloud(st.email); renderMainContent(); }
         async function deleteGeneratedSimulado(id){ if(!isAdmin()) return; generatedSimulados=generatedSimulados.filter(s=>s.id!==id); localStorage.setItem('ctrb_simulados_data',JSON.stringify(generatedSimulados)); if(currentSimulado?.id===id){ currentSimulado=null; localStorage.removeItem('ctrb_current_simulado'); } if(window.deleteSimuladoFromCloud) await window.deleteSimuladoFromCloud(id); renderMainContent(); }
 
         // VISUALIZAÇÃO E AÇÕES DO CRONOGRAMA DE ESTUDOS
@@ -1375,6 +1444,19 @@
             const motivation = (foundQ && foundQ.explanation && foundQ.explanation.trim() !== '') 
                 ? foundQ.explanation 
                 : 'Nenhuma fundamentação ou explicação cadastrada para esta questão.';
+
+            const key=currentStudentKey();
+            if(!studentHistory[key]) studentHistory[key]={};
+            const prior=studentHistory[key][qId]||{attempts:0,correct:0,lastResult:null,lastAt:null};
+            prior.attempts=(prior.attempts||0)+1; prior.lastResult=val===correctIdx?'acerto':'erro'; prior.correct=(prior.correct||0)+(val===correctIdx?1:0); prior.lastAt=new Date().toISOString();
+            studentHistory[key][qId]=prior; localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory));
+            saveStudentActivityCloud();
+
+            if(questionBankState.mode==='prova' && currentMainTab==='questoes'){
+                feedbackDiv.className='text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 mt-2 block';
+                feedbackDiv.innerHTML='<i class="fa-solid fa-circle-check"></i> Resposta registrada. O resultado será exibido ao finalizar o bloco.';
+                return;
+            }
 
             feedbackDiv.classList.remove('hidden');
 
@@ -1620,6 +1702,7 @@
             document.getElementById('edit-topic-id').value = t.id;
             document.getElementById('edit-topic-title').value = t.title;
             document.getElementById('edit-topic-yt').value = t.ytVideoId || '';
+            document.getElementById('edit-topic-yt-link').value = t.youtubeLink || (t.ytVideoId ? 'https://www.youtube.com/watch?v=' + t.ytVideoId : '');
             if (quillTopicEditor) {
                 quillTopicEditor.root.innerHTML = t.theory || '';
             }
@@ -1635,6 +1718,7 @@
             const id = document.getElementById('edit-topic-id').value;
             const title = document.getElementById('edit-topic-title').value.trim();
             const yt = document.getElementById('edit-topic-yt').value.trim();
+            const youtubeLink = document.getElementById('edit-topic-yt-link').value.trim();
             const content = quillTopicEditor ? quillTopicEditor.root.innerHTML : '';
 
             const idx = topicsData.findIndex(item => item.id === id);
@@ -1642,6 +1726,7 @@
                 topicsData[idx].title = title;
                 topicsData[idx].discipline = topicsData[idx].discipline || 'Matemática';
                 topicsData[idx].ytVideoId = yt;
+                topicsData[idx].youtubeLink = youtubeLink;
                 topicsData[idx].theory = content;
                 localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
                 if (window.saveTopicToCloud) {
@@ -1791,87 +1876,27 @@
             `;
         }
 
+        function resetQuestionBankPage(){ questionBankState.page=1; saveQuestionBankState(); }
+        function focusQuestionNote(qId){ const el=document.getElementById(`note_${qId}`); if(el){ el.classList.toggle('hidden'); if(!el.classList.contains('hidden')) el.focus(); } }
+        function finishQuestionBlock(...qIds){
+            let correct=0, answered=0; qIds.forEach(qId=>{ const a=getQuestionActivity(qId); if(a.attempts){answered++; if(a.lastResult==='acerto')correct++; const f=document.getElementById(`feedback_${qId}`); if(f && questionBankState.mode==='prova'){ f.classList.remove('hidden'); f.innerHTML=`<b>Resultado registrado.</b> Esta questão foi ${a.lastResult==='acerto'?'respondida corretamente':'respondida incorretamente'}.`; f.className='text-xs p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 mt-2'; } }});
+            alert(`Bloco finalizado: ${correct} acerto(s) em ${answered} questão(ões) respondida(s).`);
+            renderMainContent();
+        }
         function renderPerformanceView(main) {
-            const uName = currentUser.name || 'Visitante';
-            const studentPerf = multiStudentPerf[uName] || {};
-
-            let totalAcertos = 0;
-            let totalErros = 0;
-
-            topicsData.forEach(t => {
-                const stat = studentPerf[t.id] || { acertos: 0, erros: 0 };
-                totalAcertos += stat.acertos;
-                totalErros += stat.erros;
-            });
-
-            const totalRespondidas = totalAcertos + totalErros;
-            const taxaAcerto = totalRespondidas > 0 ? Math.round((totalAcertos / totalRespondidas) * 100) : 0;
-
-            main.innerHTML = `
-                <div class="space-y-6">
-                    <div class="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
-                        <div>
-                            <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Relatório de Evolução</span>
-                            <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho Geral</h2>
-                        </div>
-                        <span class="text-xs font-black bg-amber-500 text-slate-950 px-3 py-1 rounded-lg">${taxaAcerto}% de Acerto</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Total Respondidas</div>
-                                <div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-file-lines"></i>
-                            </div>
-                        </div>
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Acertos</div>
-                                <div class="text-2xl font-black text-emerald-500">${totalAcertos}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-circle-check"></i>
-                            </div>
-                        </div>
-                        <div class="p-4 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] font-bold uppercase text-slate-400">Erros</div>
-                                <div class="text-2xl font-black text-red-500">${totalErros}</div>
-                            </div>
-                            <div class="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center text-xl font-black">
-                                <i class="fa-solid fa-circle-xmark"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-white dark:bg-slate-900 space-y-4">
-                        <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                            <i class="fa-solid fa-chart-bar text-amber-500"></i> Desempenho por Tópico do Edital
-                        </h3>
-                        <div class="space-y-3">
-                            ${topicsData.map(t => {
-                                const stat = studentPerf[t.id] || { acertos: 0, erros: 0 };
-                                const tTot = stat.acertos + stat.erros;
-                                const tPct = tTot > 0 ? Math.round((stat.acertos / tTot) * 100) : 0;
-                                return `
-                                    <div class="p-3 border border-slate-100 dark:border-slate-800 rounded-xl space-y-2">
-                                        <div class="flex justify-between items-center text-xs">
-                                            <span class="font-bold text-slate-800 dark:text-slate-200">${t.title}</span>
-                                            <span class="font-bold text-amber-600 dark:text-amber-400">${stat.acertos} acertos / ${stat.erros} erros (${tPct}%)</span>
-                                        </div>
-                                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                            <div class="bg-amber-500 h-full" style="width: ${tPct}%"></div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
+            const uName=currentUser.name||'Visitante'; const key=currentStudentKey(); const studentPerf=multiStudentPerf[uName]||{}; const hist=studentHistory[key]||{}; const favMap=getFavoriteMap();
+            let totalAcertos=0,totalErros=0,totalTentativas=0;
+            topicsData.forEach(t=>{ const st=studentPerf[t.id]||{acertos:0,erros:0}; totalAcertos+=st.acertos; totalErros+=st.erros; });
+            Object.values(hist).forEach(a=>totalTentativas+=a.attempts||0);
+            const totalRespondidas=totalAcertos+totalErros; const taxa=totalRespondidas?Math.round(totalAcertos/totalRespondidas*100):0;
+            const weak=topicsData.map(t=>{const st=studentPerf[t.id]||{acertos:0,erros:0};const tot=st.acertos+st.erros;return {...t,pct:tot?Math.round(st.acertos/tot*100):0,total:tot,acertos:st.acertos,erros:st.erros};}).sort((a,b)=>a.pct-b.pct);
+            const recent=Object.entries(hist).sort((a,b)=>String(b[1].lastAt||'').localeCompare(String(a[1].lastAt||''))).slice(0,12);
+            const allQuestions={}; Object.values(masterQuestions).forEach(list=>(list||[]).forEach(q0=>{const q=normalizeQuestion(q0);allQuestions[q.id]=q;}));
+            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4 gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Relatório de Evolução</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Seu Desempenho</h2><p class="text-xs text-slate-500 dark:text-slate-400">Tudo que ajuda na revisão fica concentrado nesta aba.</p></div><button onclick="switchMainTab('questoes');questionBankState.status='favoritas';questionBankState.page=1;saveQuestionBankState();" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold">Ver favoritas (${Object.keys(favMap).length})</button></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3"><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Taxa de acerto</div><div class="text-2xl font-black text-amber-500">${taxa}%</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Respondidas</div><div class="text-2xl font-black text-slate-800 dark:text-slate-100">${totalRespondidas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Tentativas</div><div class="text-2xl font-black text-sky-500">${totalTentativas}</div></div><div class="p-4 rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="text-[10px] uppercase font-bold text-slate-400">Favoritas</div><div class="text-2xl font-black text-amber-500">${Object.keys(favMap).length}</div></div></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4"><div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><h3 class="font-bold text-sm mb-3">Desempenho por tópico</h3><div class="space-y-3">${weak.map(t=>`<div><div class="flex justify-between text-xs gap-2"><span class="font-semibold text-slate-700 dark:text-slate-200">${t.title}</span><span class="text-amber-500 font-bold">${t.pct}%</span></div><div class="w-full h-2 mt-1 rounded-full bg-slate-200 dark:bg-slate-700"><div class="h-2 rounded-full bg-amber-500" style="width:${t.pct}%"></div></div><div class="text-[10px] text-slate-400 mt-1">${t.acertos} acertos • ${t.erros} erros</div></div>`).join('')}</div></div>
+                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><h3 class="font-bold text-sm mb-3">Foco de revisão</h3><div class="space-y-2">${weak.filter(t=>t.total>0).slice(0,5).map(t=>`<button onclick="switchMainTab('questoes');questionBankState.subtopic='${t.id}';questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-amber-500/50"><div class="text-xs font-bold text-slate-800 dark:text-slate-100">${t.title}</div><div class="text-[10px] text-slate-400 mt-1">${t.erros} erro(s) • ${t.pct}% de acerto</div></button>`).join('')||'<p class="text-xs text-slate-400">Ainda não há dados suficientes. Resolva algumas questões para montar seu foco de revisão.</p>'}</div></div></div>
+                <div class="border rounded-2xl p-5 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"><div class="flex justify-between items-center gap-3 mb-3"><h3 class="font-bold text-sm">Histórico recente</h3><button onclick="switchMainTab('questoes');questionBankState.status='errei';questionBankState.page=1;saveQuestionBankState();" class="text-xs font-bold text-amber-500">Revisar erros</button></div><div class="overflow-x-auto"><table class="w-full text-left text-xs"><thead><tr class="border-b border-slate-200 dark:border-slate-800"><th class="p-2">Questão</th><th class="p-2">Tentativas</th><th class="p-2">Último resultado</th><th class="p-2">Última vez</th></tr></thead><tbody>${recent.map(([qid,a])=>`<tr class="border-b border-slate-100 dark:border-slate-800"><td class="p-2 font-semibold">${allQuestions[qid]?.statement?.slice(0,90)||qid}${(allQuestions[qid]?.statement?.length||0)>90?'…':''}</td><td class="p-2">${a.attempts||0}</td><td class="p-2 font-bold ${a.lastResult==='acerto'?'text-emerald-500':'text-red-500'}">${a.lastResult==='acerto'?'Acertou':'Errou'}</td><td class="p-2 text-slate-400">${a.lastAt?new Date(a.lastAt).toLocaleString('pt-BR'):''}</td></tr>`).join('')||'<tr><td colspan="4" class="p-4 text-center text-slate-400">Nenhuma questão respondida ainda.</td></tr>'}</tbody></table></div></div></div>`;
         }
 
         // PAINEL DO PROFESSOR ATUALIZADO (DESEMPENHO + CRONOGRAMA DOS ALUNOS)
@@ -2133,12 +2158,15 @@
       name: student.name || '',
       email: String(student.email).trim().toLowerCase(),
       pass: student.pass || '',
-      role: 'aluno',
+      role: student.role || 'aluno',
       updatedAt: nowISO()
     };
 
     if (state.performance !== undefined) payload.performance = state.performance || {};
     if (state.cronograma !== undefined) payload.cronograma = state.cronograma || [];
+    if (state.favorites !== undefined) payload.favorites = state.favorites || {};
+    if (state.history !== undefined) payload.history = state.history || {};
+    if (state.notes !== undefined) payload.notes = state.notes || {};
 
     await setDoc(doc(db, 'alunos', studentDocId(student.email)), payload, { merge: true });
   };
@@ -2169,6 +2197,11 @@
       if (Array.isArray(s.cronograma) && s.name) {
         localStorage.setItem(`ctrb_cronograma_${s.name}`, JSON.stringify(s.cronograma));
       }
+
+      const cloudKey=String(s.email||s.name||'').toLowerCase();
+      if(s.favorites){ studentFavorites[cloudKey]=s.favorites; localStorage.setItem('ctrb_student_favorites',JSON.stringify(studentFavorites)); }
+      if(s.history){ studentHistory[cloudKey]=s.history; localStorage.setItem('ctrb_student_history',JSON.stringify(studentHistory)); }
+      if(s.notes){ studentNotes[cloudKey]=s.notes; localStorage.setItem('ctrb_student_notes',JSON.stringify(studentNotes)); }
     });
 
     if (Array.isArray(window.registeredStudents)) {
