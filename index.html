@@ -34,7 +34,20 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Chart.js para Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- MathJax para Fórmulas Matemática -->
+    <!-- MathJax para fórmulas matemáticas e símbolos -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$','$'], ['\\(','\\)']],
+                displayMath: [['$$','$$'], ['\\[','\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script','noscript','style','textarea','pre','code']
+            }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <!-- Quill Rich Text Editor -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -364,6 +377,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Material Teórico</label>
+                    <p class="text-[10px] text-slate-400 mb-2">Aceita texto, listas e Markdown simples, além de LaTeX como <code>$A \subset B$</code> e aliases como <code>&lt;right-arrow&gt;</code>, <code>&lt;dots&gt;</code> e <code>&lt;empty-set&gt;</code>.</p>
                     <div id="quill-editor-topic" class="min-h-[220px]"></div>
                 </div>
                 <div class="pt-2 flex justify-end gap-2">
@@ -552,6 +566,133 @@
             const topic = topicsData.find(t => t.id === topicId);
             const type = q.type || ((Array.isArray(q.options) && q.options.length === 2 && q.options[0] === 'Certo' && q.options[1] === 'Errado') ? 'certo_errado' : 'multipla');
             return { ...q, topicId, discipline: q.discipline || (topic && topic.discipline) || 'Matemática', type, options: type === 'certo_errado' ? ['Certo', 'Errado'] : (Array.isArray(q.options) && q.options.length ? q.options : ['', '', '', '', '']) };
+        }
+
+        // Renderização segura e rica de conteúdo digitado pelo professor/aluno.
+        // Aceita HTML seguro já produzido pelo Quill, Markdown simples, LaTeX
+        // entre $...$, $$...$$, \( ... \), \[ ... \], e aliases como
+        // <right-arrow>, <dots>, <empty-set>, etc.
+        const SYMBOL_ALIASES = {
+            'right-arrow':'→','left-arrow':'←','up-arrow':'↑','down-arrow':'↓','double-right-arrow':'⇒','double-left-arrow':'⇐',
+            'leftright-arrow':'↔','double-leftright-arrow':'⇔','rightarrow':'→','leftarrow':'←','uparrow':'↑','downarrow':'↓',
+            'iff':'⇔','implies':'⇒','in':'∈','notin':'∉','subset':'⊂','supset':'⊃','subseteq':'⊆','supseteq':'⊇',
+            'empty-set':'∅','emptyset':'∅','union':'∪','intersection':'∩','dots':'…','ldots':'…','cdots':'⋯','vdots':'⋮',
+            'times':'×','pm':'±','leq':'≤','geq':'≥','neq':'≠','approx':'≈','forall':'∀','exists':'∃',
+            'aleph':'ℵ','infinity':'∞','natural':'ℕ','integers':'ℤ','rationals':'ℚ','reals':'ℝ','complex':'ℂ','therefore':'∴','because':'∵'
+        };
+
+        function normalizeSymbolAliases(value) {
+            let text = String(value ?? '');
+            Object.entries(SYMBOL_ALIASES).forEach(([alias, symbol]) => {
+                const raw = new RegExp('<\\s*' + alias + '\\s*>', 'gi');
+                const escaped = new RegExp('&lt;\\s*' + alias + '\\s*&gt;', 'gi');
+                text = text.replace(raw, symbol).replace(escaped, symbol);
+            });
+            return text;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeHtmlPreserveMath(value) {
+            const text = normalizeSymbolAliases(value);
+            return escapeHtml(text).replace(/\n/g, '<br>');
+        }
+
+        function markdownToHtml(raw) {
+            const lines = String(raw ?? '').replace(/\r/g, '').split('\n');
+            const out = [];
+            let listType = null;
+            const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
+            const inline = line => {
+                let x = escapeHtmlPreserveMath(line);
+                x = x.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                x = x.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+                return x;
+            };
+            for (const line of lines) {
+                if (!line.trim()) { closeList(); continue; }
+                let m;
+                if ((m = line.match(/^######\s+(.+)$/))) { closeList(); out.push(`<h6>${inline(m[1])}</h6>`); continue; }
+                if ((m = line.match(/^#####\s+(.+)$/))) { closeList(); out.push(`<h5>${inline(m[1])}</h5>`); continue; }
+                if ((m = line.match(/^####\s+(.+)$/))) { closeList(); out.push(`<h4>${inline(m[1])}</h4>`); continue; }
+                if ((m = line.match(/^###\s+(.+)$/))) { closeList(); out.push(`<h3>${inline(m[1])}</h3>`); continue; }
+                if ((m = line.match(/^##\s+(.+)$/))) { closeList(); out.push(`<h2>${inline(m[1])}</h2>`); continue; }
+                if ((m = line.match(/^#\s+(.+)$/))) { closeList(); out.push(`<h1>${inline(m[1])}</h1>`); continue; }
+                if ((m = line.match(/^\s*[-*]\s+(.+)$/))) {
+                    if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; }
+                    out.push(`<li>${inline(m[1])}</li>`);
+                    continue;
+                }
+                if ((m = line.match(/^\s*\d+[.)]\s+(.+)$/))) {
+                    if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; }
+                    out.push(`<li>${inline(m[1])}</li>`);
+                    continue;
+                }
+                if ((m = line.match(/^>\s?(.*)$/))) { closeList(); out.push(`<blockquote>${inline(m[1])}</blockquote>`); continue; }
+                closeList();
+                out.push(`<p>${inline(line)}</p>`);
+            }
+            closeList();
+            return out.join('');
+        }
+
+        function looksLikeMarkdown(text) {
+            return /(^|\n)\s*(#{1,6}\s+|[-*]\s+|\d+[.)]\s+|>\s?)/m.test(String(text ?? ''));
+        }
+
+        function renderRichText(value, {allowHtml=false, markdown=false} = {}) {
+            const raw = String(value ?? '');
+            if (!allowHtml || markdown) return markdownToHtml(normalizeSymbolAliases(raw));
+            return normalizeSymbolAliases(raw);
+        }
+
+        function htmlToPlainText(html) {
+            const normalized = normalizeSymbolAliases(html);
+            const temp = document.createElement('div');
+            temp.innerHTML = normalized
+                .replace(/<\/(p|div|h[1-6]|li|blockquote|tr|br)\s*>/gi, '\n')
+                .replace(/<br\s*\/?>/gi, '\n');
+            return (temp.textContent || '').replace(/\u00a0/g, ' ');
+        }
+
+        function sanitizeTheoryHtml(html) {
+            const normalized = normalizeSymbolAliases(html);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(`<div>${normalized}</div>`, 'text/html');
+            const root = doc.body.firstElementChild;
+            const allowed = new Set(['P','BR','H1','H2','H3','H4','H5','H6','STRONG','B','EM','I','U','S','UL','OL','LI','BLOCKQUOTE','A','SUB','SUP','HR','DIV','SPAN','TABLE','THEAD','TBODY','TR','TH','TD']);
+            const walk = node => {
+                [...node.children].forEach(child => {
+                    walk(child);
+                    if (!allowed.has(child.tagName)) {
+                        const text = document.createTextNode(child.textContent || '');
+                        child.replaceWith(text);
+                    } else if (child.tagName === 'A') {
+                        const href = child.getAttribute('href') || '';
+                        if (!/^(https?:|mailto:)/i.test(href)) child.removeAttribute('href');
+                        child.setAttribute('target','_blank');
+                        child.setAttribute('rel','noopener noreferrer');
+                    }
+                });
+            };
+            walk(root);
+            return root.innerHTML;
+        }
+
+        function prepareTheoryContent(html) {
+            const raw = String(html ?? '');
+            const plain = htmlToPlainText(raw);
+            if (looksLikeMarkdown(plain) && !/<(?:h[1-6]|li|blockquote|strong|em)\b/i.test(raw)) {
+                return markdownToHtml(plain);
+            }
+            return sanitizeTheoryHtml(raw);
         }
 
         function currentStudentKey(){ return String(currentUser?.email || currentUser?.name || 'visitante').toLowerCase(); }
@@ -1193,7 +1334,7 @@
                             <div><label class="text-[10px] font-bold uppercase text-slate-500">Disciplina</label><select onchange="questionBankState.discipline=this.value; questionBankState.subtopic='Todos'; localStorage.setItem('ctrb_question_bank_state',JSON.stringify(questionBankState)); renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${availableDisciplines.map(d=>`<option ${d===activeDiscipline?'selected':''}>${d}</option>`).join('')}</select></div>
                             <div><label class="text-[10px] font-bold uppercase text-slate-500">Tópico / Subtópico</label><select onchange="currentSubTopicId=this.value; renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${disciplineTopics.map(t=>`<option value="${t.id}" ${t.id===currentSubTopicId?'selected':''}>${t.title}</option>`).join('')}</select></div>
                         </div>
-                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${activeTopic.theory || '<p>Material ainda não cadastrado.</p>'}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950">${embedUrl ? `<iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allowfullscreen></iframe>` : '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div>'}</div>${activeTopic?.youtubeLink?`<a href="${activeTopic.youtubeLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400"><i class="fa-brands fa-youtube"></i> Link do vídeo / playlist no YouTube</a>`:''}</div></div>` : ''}
+                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${prepareTheoryContent(activeTopic.theory || '<p>Material ainda não cadastrado.</p>')}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950">${embedUrl ? `<iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allowfullscreen></iframe>` : '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div>'}</div>${activeTopic?.youtubeLink?`<a href="${activeTopic.youtubeLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400"><i class="fa-brands fa-youtube"></i> Link do vídeo / playlist no YouTube</a>`:''}</div></div>` : ''}
                     </div>`;
             }
             else if (currentMainTab === 'questoes') {
@@ -1220,8 +1361,8 @@
                 const renderQuestion=(q,idx)=>{ const activity=getQuestionActivity(q.id); const cuts=getCutMap()[q.id]||{}; const note=((studentNotes[activeKey]||{})[q.id]||'').replace(/"/g,'&quot;'); const showProof=questionBankState.mode==='prova'&&questionBankState.showProofResults&&activity.attempts; startQuestionTimer(q.id); return `<article class="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4" id="question-${q.id}">
                     <div class="flex flex-wrap justify-between items-center gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${optionLabel(q)}</span>${activity.attempts?`<span class="text-[10px] px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">${activity.attempts} tentativa(s)</span>`:''}</div>
                     <div class="flex items-center gap-2">${currentUser.role!=='visitante'?`<button onclick="toggleFavorite('${q.id}')" title="${isFavorite(q.id)?'Remover dos favoritos':'Salvar nos favoritos'}" class="text-slate-400 hover:text-amber-500 p-1"><i class="fa-star ${isFavorite(q.id)?'fa-solid favorite-active':'fa-regular'}"></i></button>`:''}${canManageContent()?`<button onclick="openEditQuestionModal('${q.topicId}','${q.id}')" class="text-xs text-slate-400 hover:text-amber-500">Editar</button><button onclick="deleteQuestion('${q.topicId}','${q.id}')" class="text-xs text-red-400">Excluir</button>`:''}</div></div>
-                    <p class="text-sm font-medium text-slate-800 dark:text-slate-100">${q.statement}</p>
-                    <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${opt}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
+                    <p class="text-sm font-medium text-slate-800 dark:text-slate-100">${renderRichText(q.statement)}</p>
+                    <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${renderRichText(opt)}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
                     <div class="flex flex-wrap gap-2"><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-700 text-white dark:text-amber-300 text-xs font-bold px-4 py-2 rounded-xl">${questionBankState.mode==='prova'?'Registrar resposta':'Responder e Ver Gabarito'}</button>${currentUser.role!=='visitante'?`<button onclick="focusQuestionNote('${q.id}')" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-note-sticky"></i> Anotação</button>`:''}</div>
                     ${currentUser.role!=='visitante'?`<input id="note_${q.id}" value="${note}" onchange="saveQuestionNote('${q.id}',this.value)" placeholder="Anote seu raciocínio, dúvida ou ponto para revisar..." class="hidden w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200">`:''}
                     <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s`:''}</div>
@@ -1501,11 +1642,11 @@
             if(isCorrect){
                 adjustPerformance(tId,'acerto',1);
                 feedbackDiv.className='text-xs p-4 rounded-xl border border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${motivation}</p></div>`;
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText)}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderRichText(motivation)}</p></div>`;
             } else {
                 adjustPerformance(tId,'erro',1);
                 feedbackDiv.className='text-xs p-4 rounded-xl border border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-950 dark:text-red-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${correctText}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${motivation}</p></div>`;
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText)}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderRichText(motivation)}</p></div>`;
             }
             if(window.MathJax) MathJax.typesetPromise();
         }
@@ -1629,14 +1770,14 @@
 
             const difficulty = document.getElementById('q-edit-difficulty').value;
             const type = document.getElementById('q-edit-type').value;
-            const statement = document.getElementById('q-edit-statement').value.trim();
-            const opt0 = document.getElementById('q-edit-opt0').value.trim();
-            const opt1 = document.getElementById('q-edit-opt1').value.trim();
-            const opt2 = document.getElementById('q-edit-opt2').value.trim();
-            const opt3 = document.getElementById('q-edit-opt3').value.trim();
-            const opt4 = document.getElementById('q-edit-opt4').value.trim();
+            const statement = normalizeSymbolAliases(document.getElementById('q-edit-statement').value.trim());
+            const opt0 = normalizeSymbolAliases(document.getElementById('q-edit-opt0').value.trim());
+            const opt1 = normalizeSymbolAliases(document.getElementById('q-edit-opt1').value.trim());
+            const opt2 = normalizeSymbolAliases(document.getElementById('q-edit-opt2').value.trim());
+            const opt3 = normalizeSymbolAliases(document.getElementById('q-edit-opt3').value.trim());
+            const opt4 = normalizeSymbolAliases(document.getElementById('q-edit-opt4').value.trim());
             const correct = parseInt(document.getElementById('q-edit-correct').value);
-            const explanation = document.getElementById('q-edit-explanation').value.trim();
+            const explanation = normalizeSymbolAliases(document.getElementById('q-edit-explanation').value.trim());
 
             const isNew = !qId;
             const questionData = {
@@ -1734,7 +1875,7 @@
             const title = document.getElementById('edit-topic-title').value.trim();
             const yt = document.getElementById('edit-topic-yt').value.trim();
             const youtubeLink = document.getElementById('edit-topic-yt-link').value.trim();
-            const content = quillTopicEditor ? quillTopicEditor.root.innerHTML : '';
+            const content = quillTopicEditor ? prepareTheoryContent(quillTopicEditor.root.innerHTML) : '';
 
             const idx = topicsData.findIndex(item => item.id === id);
             if (idx !== -1) {
@@ -1869,9 +2010,9 @@
                                 <div class="flex items-center gap-2">
                                     <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${idx + 1}</span>
                                 </div>
-                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${q.statement}</p>
+                                <p class="text-sm text-slate-800 dark:text-slate-200 font-medium">${renderRichText(q.statement)}</p>
                                 <div class="space-y-2 pl-1">
-                                    ${q.options.map((opt, optIdx) => { const cut=!!((getCutMap()[q.id]||{})[optIdx]); return `<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${optIdx}" class="question-option ${cut?'question-option-cut':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_sim_${q.id}" value="${optIdx}"><span>${opt}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${optIdx})" title="${cut?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cut?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`; }).join('')}
+                                    ${q.options.map((opt, optIdx) => { const cut=!!((getCutMap()[q.id]||{})[optIdx]); return `<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${optIdx}" class="question-option ${cut?'question-option-cut':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_sim_${q.id}" value="${optIdx}"><span>${renderRichText(opt)}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${optIdx})" title="${cut?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cut?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`; }).join('')}
                                 </div>
                                 <div class="pt-2 flex items-center gap-3">
                                     <button onclick="checkAnswer('${q.id}', ${q.correct}, '${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white dark:text-amber-400 text-xs font-bold px-4 py-2 rounded-xl transition shadow border border-slate-700">
@@ -2043,7 +2184,7 @@
 
             const historyRows = recentEntries.length ? recentEntries.map(([questionId, item]) => {
                 const question = allQuestions[questionId];
-                const text = question && question.statement ? String(question.statement).replace(/<[^>]*>/g, '').slice(0, 90) : questionId;
+                const text = question && question.statement ? normalizeSymbolAliases(String(question.statement)).replace(/<[^>]*>/g, '').slice(0, 90) : questionId;
                 const result = item && item.lastResult === 'acerto';
                 return `
                     <tr class="border-b border-slate-100 dark:border-slate-800">
