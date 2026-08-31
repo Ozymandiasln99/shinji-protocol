@@ -871,18 +871,22 @@
             localStorage.setItem('ctrb_student_daily_evolution',JSON.stringify(studentDailyEvolution));
         }
         function saveStudentActivityCloud(){
+            const activityState = {
+                performance: multiStudentPerf[currentUser?.name] || {},
+                cronograma: getUserCronograma(),
+                favorites:getFavoriteMap(),
+                history:studentHistory[currentStudentKey()]||{},
+                notes:studentNotes[currentStudentKey()]||{},
+                cuts:getCutMap(),
+                questionTimes:studentQuestionTimes[currentStudentKey()]||{},
+                dailyEvolution:studentDailyEvolution[currentStudentKey()]||{}
+            };
+            if(currentUser?.role==='admin' && window.saveProfessorStateToCloud){
+                return window.saveProfessorStateToCloud(activityState).catch(err=>console.warn('Falha ao sincronizar desempenho do professor:',err));
+            }
             if((currentUser?.role==='aluno' || currentUser?.role==='moderador') && window.saveStudentStateToCloud){
                 const student = registeredStudents.find(s => String(s.email||'').toLowerCase()===String(currentUser.email||'').toLowerCase()) || currentUser;
-                return window.saveStudentStateToCloud(student,{
-                    performance: multiStudentPerf[currentUser.name] || {},
-                    cronograma: getUserCronograma(),
-                    favorites:getFavoriteMap(),
-                    history:studentHistory[currentStudentKey()]||{},
-                    notes:studentNotes[currentStudentKey()]||{},
-                    cuts:getCutMap(),
-                    questionTimes:studentQuestionTimes[currentStudentKey()]||{},
-                    dailyEvolution:studentDailyEvolution[currentStudentKey()]||{}
-                }).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
+                return window.saveStudentStateToCloud(student,activityState).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
             }
             return Promise.resolve();
         }
@@ -1435,8 +1439,32 @@
             const p = document.getElementById('admin-pass').value.trim();
 
             if (u === 'admin' && p === 'admin') {
-                currentUser = { role: 'admin', name: 'Professor' };
+                currentUser = { role: 'admin', name: 'Professor', email: 'professor@ctrb.local' };
                 localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+                if (window.loadProfessorStateFromCloud) {
+                    try {
+                        const cloudProfessorState = await window.loadProfessorStateFromCloud();
+                        // Se ainda não existe registro do professor na nuvem, preserva o
+                        // desempenho que já estava salvo neste computador, sem criar um
+                        // registro vazio em um dispositivo novo.
+                        if (!cloudProfessorState && window.saveProfessorStateToCloud) {
+                            const hasLocalProfessorData =
+                                Object.keys(multiStudentPerf.Professor || {}).length ||
+                                Object.keys(studentHistory[currentStudentKey()] || {}).length ||
+                                Object.keys(studentDailyEvolution[currentStudentKey()] || {}).length;
+                            if (hasLocalProfessorData) await window.saveProfessorStateToCloud({
+                                performance: multiStudentPerf.Professor || {},
+                                cronograma: getUserCronograma(),
+                                favorites: getFavoriteMap(),
+                                history: studentHistory[currentStudentKey()] || {},
+                                notes: studentNotes[currentStudentKey()] || {},
+                                cuts: getCutMap(),
+                                questionTimes: studentQuestionTimes[currentStudentKey()] || {},
+                                dailyEvolution: studentDailyEvolution[currentStudentKey()] || {}
+                            });
+                        }
+                    } catch (err) { console.warn('Não foi possível sincronizar o desempenho do professor com a nuvem:', err); }
+                }
                 updateUserUI();
                 closeAuthModal();
                 switchMainTab('professor');
@@ -1895,11 +1923,7 @@
             localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
 
             // Cada resposta é persistida na nuvem imediatamente.
-            if ((currentUser.role === 'aluno' || currentUser.role === 'moderador') && window.saveStudentStateToCloud) {
-                const student = registeredStudents.find(s =>
-                    String(s.email || '').toLowerCase() === String(currentUser.email || '').toLowerCase()
-                ) || currentUser;
-
+            if (currentUser.role === 'admin' || currentUser.role === 'aluno' || currentUser.role === 'moderador') {
                 saveStudentActivityCloud().catch(err => console.warn('Falha ao sincronizar desempenho:', err));
             }
         }
@@ -2835,6 +2859,67 @@
     await setDoc(doc(db, 'alunos', studentDocId(student.email)), payload, { merge: true });
   };
 
+  /* ============================================================
+     PROFESSOR — DESEMPENHO E ATIVIDADES NA NUVEM
+     Mantém os dados do professor separados da coleção de alunos.
+     ============================================================ */
+  const PROFESSOR_DOC_ID = 'professor_principal';
+
+  window.saveProfessorStateToCloud = async function(state = {}) {
+    const payload = {
+      name: 'Professor',
+      email: 'professor@ctrb.local',
+      role: 'admin',
+      updatedAt: nowISO()
+    };
+    if (state.performance !== undefined) payload.performance = state.performance || {};
+    if (state.cronograma !== undefined) payload.cronograma = state.cronograma || [];
+    if (state.favorites !== undefined) payload.favorites = state.favorites || {};
+    if (state.history !== undefined) payload.history = state.history || {};
+    if (state.notes !== undefined) payload.notes = state.notes || {};
+    if (state.cuts !== undefined) payload.cuts = state.cuts || {};
+    if (state.questionTimes !== undefined) payload.questionTimes = state.questionTimes || {};
+    if (state.dailyEvolution !== undefined) payload.dailyEvolution = state.dailyEvolution || {};
+    await setDoc(doc(db, 'professores', PROFESSOR_DOC_ID), payload, { merge: true });
+  };
+
+  window.loadProfessorStateFromCloud = async function() {
+    const snap = await getDoc(doc(db, 'professores', PROFESSOR_DOC_ID));
+    if (!snap.exists()) return null;
+    const s = snap.data() || {};
+    const key = String(currentUser?.email || 'professor').toLowerCase();
+    if (s.performance) { multiStudentPerf.Professor = s.performance; localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf)); }
+    if (s.favorites) { studentFavorites[key] = s.favorites; localStorage.setItem('ctrb_student_favorites', JSON.stringify(studentFavorites)); }
+    if (s.history) { studentHistory[key] = s.history; localStorage.setItem('ctrb_student_history', JSON.stringify(studentHistory)); }
+    if (s.notes) { studentNotes[key] = s.notes; localStorage.setItem('ctrb_student_notes', JSON.stringify(studentNotes)); }
+    if (s.cuts) { studentCuts[key] = s.cuts; localStorage.setItem('ctrb_student_cuts', JSON.stringify(studentCuts)); }
+    if (s.questionTimes) { studentQuestionTimes[key] = s.questionTimes; localStorage.setItem('ctrb_student_question_times', JSON.stringify(studentQuestionTimes)); }
+    if (s.dailyEvolution) { studentDailyEvolution[key] = s.dailyEvolution; localStorage.setItem('ctrb_student_daily_evolution', JSON.stringify(studentDailyEvolution)); }
+    return s;
+  };
+
+  let unsubscribeProfessor = null;
+  window.startProfessorRealtime = function() {
+    if (unsubscribeProfessor) return;
+    unsubscribeProfessor = onSnapshot(
+      doc(db, 'professores', PROFESSOR_DOC_ID),
+      snapshot => {
+        if (!snapshot.exists() || typeof currentUser === 'undefined' || currentUser.role !== 'admin') return;
+        const s = snapshot.data() || {};
+        if (s.performance) { multiStudentPerf.Professor = s.performance; localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf)); }
+        const key = String(currentUser?.email || 'professor').toLowerCase();
+        if (s.favorites) { studentFavorites[key] = s.favorites; localStorage.setItem('ctrb_student_favorites', JSON.stringify(studentFavorites)); }
+        if (s.history) { studentHistory[key] = s.history; localStorage.setItem('ctrb_student_history', JSON.stringify(studentHistory)); }
+        if (s.notes) { studentNotes[key] = s.notes; localStorage.setItem('ctrb_student_notes', JSON.stringify(studentNotes)); }
+        if (s.cuts) { studentCuts[key] = s.cuts; localStorage.setItem('ctrb_student_cuts', JSON.stringify(studentCuts)); }
+        if (s.questionTimes) { studentQuestionTimes[key] = s.questionTimes; localStorage.setItem('ctrb_student_question_times', JSON.stringify(studentQuestionTimes)); }
+        if (s.dailyEvolution) { studentDailyEvolution[key] = s.dailyEvolution; localStorage.setItem('ctrb_student_daily_evolution', JSON.stringify(studentDailyEvolution)); }
+        if (typeof currentMainTab !== 'undefined' && currentMainTab === 'desempenho') renderMainContent();
+      },
+      error => console.error('Erro no listener de desempenho do professor:', error)
+    );
+  };
+
   function applyCloudStudents(cloudStudents) {
     const byEmail = new Map();
 
@@ -3236,6 +3321,7 @@
 
   // Alunos + conteúdo público usam listeners independentes.
   window.startStudentsRealtime();
+  window.startProfessorRealtime();
   await initializeCloudContent();
 
   console.log('Firebase inicializado: alunos, teoria, banco de questões e abas em REAL-TIME.');
