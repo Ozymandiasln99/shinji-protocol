@@ -1142,6 +1142,12 @@
                     theme: 'snow',
                     modules: { toolbar: '#question-rich-toolbar' }
                 });
+                // Mantém cada campo de alternativa plenamente editável mesmo com o
+                // editor inicializado enquanto o modal está oculto. Não altera o
+                // toolbar/MathLab nem a forma como os dados são salvos.
+                questionEditors[key].root.setAttribute('contenteditable', 'true');
+                questionEditors[key].root.style.pointerEvents = 'auto';
+                questionEditors[key].root.setAttribute('spellcheck', 'true');
                 questionEditors[key].on('focus', () => { lastRichEditor = questionEditors[key]; });
                 questionEditors[key].on('selection-change', range => {
                     if (range) lastRichEditor = questionEditors[key];
@@ -1173,7 +1179,9 @@
             initQuestionEditors();
             const editor = questionEditors[key];
             if (!editor) return false;
-            return String(editor.getText() || '').trim().length > 0;
+            const text = String(editor.getText?.() || editor.root?.innerText || editor.root?.textContent || '').replace(/\u200B/g, '').trim();
+            const html = String(editor.root?.innerHTML || '').replace(/<br\s*\/?>(?:\s*)$/i, '').replace(/&nbsp;/gi, ' ').trim();
+            return text.length > 0 || html.length > 0;
         }
 
         function insertMathSymbol(symbol) {
@@ -2001,6 +2009,11 @@
             sel.innerHTML = topicsData.map(t => `<option value="${t.id}" ${t.id === (topicId || currentSubTopicId) ? 'selected' : ''}>${t.title}</option>`).join('');
 
             document.getElementById('edit-question-modal').classList.remove('hidden');
+            // Garante que os editores tenham o estado editável correto após o modal abrir.
+            initQuestionEditors();
+            Object.values(questionEditors).forEach(editor => {
+                if (editor?.root) editor.root.setAttribute('contenteditable', 'true');
+            });
         }
 
         function openEditQuestionModal(topicId, qId) {
@@ -2028,6 +2041,10 @@
             sel.innerHTML = topicsData.map(t => `<option value="${t.id}" ${t.id === topicId ? 'selected' : ''}>${t.title}</option>`).join('');
 
             document.getElementById('edit-question-modal').classList.remove('hidden');
+            initQuestionEditors();
+            Object.values(questionEditors).forEach(editor => {
+                if (editor?.root) editor.root.setAttribute('contenteditable', 'true');
+            });
         }
 
         function closeEditQuestionModal() {
