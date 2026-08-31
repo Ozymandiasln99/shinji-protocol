@@ -3066,33 +3066,28 @@
   }
 
   async function migratePublicContentIfCloudIsEmpty() {
+    // IMPORTANTE: o HTML local é apenas um catálogo inicial/cache.
+    // Depois que existir conteúdo no Firestore, NUNCA recriamos documentos
+    // que foram excluídos na nuvem. Isso evita que questões apagadas voltem
+    // ao acessar o site por um PC/celular novo.
+
     // ---------- MÓDULOS ----------
     const topicSnap = await getDocs(collection(db, 'modulos'));
-    const cloudTopicIds = new Set(topicSnap.docs.map(d => d.id));
-
-    if (Array.isArray(topicsData)) {
+    if (topicSnap.empty && Array.isArray(topicsData)) {
       for (const topic of topicsData) {
-        const id = safeDocId(topic.id);
-        if (!cloudTopicIds.has(id)) {
-          await window.saveTopicToCloud(topic.id, topic);
-        }
+        await window.saveTopicToCloud(topic.id, topic);
       }
     }
 
     // ---------- QUESTÕES ----------
     const questionSnap = await getDocs(collection(db, 'questoes'));
-    const cloudQuestionIds = new Set(questionSnap.docs.map(d => d.id));
-
-    if (typeof masterQuestions !== 'undefined' && masterQuestions) {
+    if (questionSnap.empty && typeof masterQuestions !== 'undefined' && masterQuestions) {
       for (const [topicId, list] of Object.entries(masterQuestions)) {
         for (const q of (Array.isArray(list) ? list : [])) {
-          const id = safeDocId(q.id);
-          if (!cloudQuestionIds.has(id)) {
-            await window.saveQuestionToCloud({
-              ...q,
-              topicId: q.topicId || topicId
-            });
-          }
+          await window.saveQuestionToCloud({
+            ...q,
+            topicId: q.topicId || topicId
+          });
         }
       }
     }
@@ -3226,10 +3221,12 @@
   };
 
   async function initializeCloudContent() {
-    try { await window.publishLocalContentSnapshotToCloud(); } catch (err) {
-      console.warn('Não foi possível publicar a versão do HTML no Firestore:', err);
-    }
-    try { await migratePublicContentIfCloudIsEmpty(); } catch (err) { console.warn('Não foi possível migrar conteúdo local para o Firestore:', err); }
+    // NÃO publique automaticamente o HTML local ao entrar em um dispositivo.
+    // Um dispositivo novo pode ter o catálogo original embutido no HTML e,
+    // portanto, uma publicação automática poderia recriar questões excluídas.
+    // A publicação de inclusões/edições/exclusões feitas diretamente no HTML
+    // continua disponível exclusivamente pelo botão do Painel do Professor.
+    try { await migratePublicContentIfCloudIsEmpty(); } catch (err) { console.warn('Não foi possível inicializar o conteúdo do Firestore:', err); }
     try {
       const catRef=doc(db,'configuracoes','conteudo'); const catSnap=await getDoc(catRef); if(!catSnap.exists()) await window.saveContentCatalogToCloud(disciplinesData);
       const simSnap=await getDocs(collection(db,'simulados')); if(simSnap.empty && generatedSimulados.length) for(const sim of generatedSimulados) await window.saveSimuladoToCloud(sim);
