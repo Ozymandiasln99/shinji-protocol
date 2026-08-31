@@ -88,6 +88,63 @@
         .cut-option-active { color:#ef4444 !important; border-color:#ef4444 !important; background-color:#fef2f2 !important; }
         .dark .cut-option-active { background-color:#3f1d24 !important; }
         .question-option.disabled-after-answer { cursor:default; }
+
+        /* Editor rico: barra de ferramentas permanece visível enquanto o conteúdo rola. */
+        #edit-topic-form .ql-toolbar,
+        #edit-question-form .ql-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 35;
+            background: #f8fafc;
+            box-shadow: 0 2px 8px rgba(15,23,42,.08);
+        }
+        .dark #edit-topic-form .ql-toolbar,
+        .dark #edit-question-form .ql-toolbar {
+            background: #1e293b;
+        }
+        .rich-question-editor {
+            min-height: 105px;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: .5rem;
+        }
+        .dark .rich-question-editor {
+            background: #0f172a;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+        .rich-question-editor .ql-editor { min-height: 105px; }
+        .question-mathlab {
+            position: sticky;
+            top: 42px;
+            z-index: 34;
+        }
+        .mathlab-btn {
+            min-width: 32px;
+            padding: 4px 7px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            background: #fff;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .dark .mathlab-btn { background:#0f172a; border-color:#475569; color:#e2e8f0; }
+        .mathlab-btn:hover { border-color:#f59e0b; background:#fffbeb; }
+        .dark .mathlab-btn:hover { background:#1f2937; }
+        .ql-font-serif { font-family: Georgia, 'Times New Roman', serif; }
+        .ql-font-monospace { font-family: 'Courier New', monospace; }
+        .ql-editor { font-family: Arial, sans-serif; }
+        .ql-editor .ql-font-serif { font-family: Georgia, 'Times New Roman', serif; }
+        .ql-editor .ql-font-monospace { font-family: 'Courier New', monospace; }
+        .ql-editor .ql-size-small { font-size: .75em; }
+        .ql-editor .ql-size-large { font-size: 1.5em; }
+        .ql-editor .ql-size-huge { font-size: 2.5em; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="serif"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="serif"]::before { content: 'Serif'; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="sans"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="sans"]::before { content: 'Sans'; }
+        .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="monospace"]::before,
+        .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="monospace"]::before { content: 'Monospace'; }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col transition-colors duration-200">
@@ -378,6 +435,30 @@
                 <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Material Teórico</label>
                     <p class="text-[10px] text-slate-400 mb-2">Aceita texto, listas e Markdown simples, além de LaTeX como <code>$A \subset B$</code> e aliases como <code>&lt;right-arrow&gt;</code>, <code>&lt;dots&gt;</code> e <code>&lt;empty-set&gt;</code>.</p>
+                    <div id="theory-mathlab" class="question-mathlab flex flex-wrap gap-1.5 p-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+                        <span class="text-[10px] font-black text-amber-600 dark:text-amber-400 px-1.5 py-1">MathLab</span>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('→')">→</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('←')">←</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('⇒')">⇒</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('⇔')">⇔</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('∈')">∈</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('∉')">∉</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('⊂')">⊂</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('⊆')">⊆</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('∅')">∅</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('∪')">∪</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('∩')">∩</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('…')">…</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('≤')">≤</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('≥')">≥</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('≠')">≠</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('±')">±</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('∞')">∞</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('ℕ')">ℕ</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('ℤ')">ℤ</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('ℚ')">ℚ</button>
+                        <button type="button" class="mathlab-btn" onclick="insertTheoryMathSymbol('ℝ')">ℝ</button>
+                    </div>
                     <div id="quill-editor-topic" class="min-h-[220px]"></div>
                 </div>
                 <div class="pt-2 flex justify-end gap-2">
@@ -424,17 +505,73 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Enunciado</label>
-                    <textarea id="q-edit-statement" required rows="3" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Editor de Texto</label>
+                    <div id="question-rich-toolbar" class="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-t-lg">
+                        <span class="ql-formats">
+                            <select class="ql-font" title="Tipo de caractere"><option selected value="sans"></option><option value="serif"></option><option value="monospace"></option></select>
+                            <select class="ql-size" title="Tamanho"><option value="small"></option><option selected></option><option value="large"></option><option value="huge"></option></select>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-header"><option value="1"></option><option value="2"></option><option value="3"></option><option value="4"></option><option selected></option></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button type="button" class="ql-bold"></button><button type="button" class="ql-italic"></button><button type="button" class="ql-underline"></button><button type="button" class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-color"></select><select class="ql-background"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-align"><option selected></option><option value="center"></option><option value="right"></option><option value="justify"></option></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button type="button" class="ql-list" value="ordered"></button><button type="button" class="ql-list" value="bullet"></button>
+                            <button type="button" class="ql-blockquote"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button type="button" class="ql-script" value="sub"></button><button type="button" class="ql-script" value="super"></button>
+                            <button type="button" class="ql-indent" value="-1"></button><button type="button" class="ql-indent" value="+1"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button type="button" class="ql-link"></button><button type="button" class="ql-clean"></button>
+                        </span>
+                    </div>
+                    <div id="question-mathlab" class="question-mathlab flex flex-wrap gap-1.5 p-2 border-x border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900">
+                        <span class="text-[10px] font-black text-amber-600 dark:text-amber-400 px-1.5 py-1">MathLab</span>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('→')">→</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('←')">←</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('⇒')">⇒</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('⇔')">⇔</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('∈')">∈</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('∉')">∉</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('⊂')">⊂</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('⊆')">⊆</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('∅')">∅</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('∪')">∪</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('∩')">∩</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('…')">…</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('≤')">≤</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('≥')">≥</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('≠')">≠</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('±')">±</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('∞')">∞</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('ℕ')">ℕ</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('ℤ')">ℤ</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('ℚ')">ℚ</button>
+                        <button type="button" class="mathlab-btn" onclick="insertMathSymbol('ℝ')">ℝ</button>
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-[10px] font-bold text-slate-500 mb-1">Enunciado</label>
+                        <div id="q-edit-statement" class="rich-question-editor"></div>
+                    </div>
                 </div>
 
-                <div class="space-y-2">
+                <div class="space-y-3">
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Alternativas</label>
-                    <input type="text" id="q-edit-opt0" placeholder="Opção A" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
-                    <input type="text" id="q-edit-opt1" placeholder="Opção B" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
-                    <input type="text" id="q-edit-opt2" placeholder="Opção C" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
-                    <input type="text" id="q-edit-opt3" placeholder="Opção D" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
-                    <input type="text" id="q-edit-opt4" placeholder="Opção E" required class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
+                    <div><span class="text-[10px] font-bold text-slate-400">A</span><div id="q-edit-opt0" class="rich-question-editor"></div></div>
+                    <div><span class="text-[10px] font-bold text-slate-400">B</span><div id="q-edit-opt1" class="rich-question-editor"></div></div>
+                    <div><span class="text-[10px] font-bold text-slate-400">C</span><div id="q-edit-opt2" class="rich-question-editor"></div></div>
+                    <div><span class="text-[10px] font-bold text-slate-400">D</span><div id="q-edit-opt3" class="rich-question-editor"></div></div>
+                    <div><span class="text-[10px] font-bold text-slate-400">E</span><div id="q-edit-opt4" class="rich-question-editor"></div></div>
                 </div>
 
                 <div>
@@ -450,7 +587,7 @@
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Motivação / Fundamentação da Resposta (Gabarito Comentado)</label>
-                    <textarea id="q-edit-explanation" rows="3" placeholder="Insira a resolução detalhada e a justificativa do gabarito para orientar o aluno..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <div id="q-edit-explanation" class="rich-question-editor"></div>
                 </div>
 
                 <div class="pt-2 flex justify-end gap-2">
@@ -649,8 +786,9 @@
 
         function renderRichText(value, {allowHtml=false, markdown=false} = {}) {
             const raw = String(value ?? '');
-            if (!allowHtml || markdown) return markdownToHtml(normalizeSymbolAliases(raw));
-            return normalizeSymbolAliases(raw);
+            if (markdown) return markdownToHtml(normalizeSymbolAliases(raw));
+            if (!allowHtml) return markdownToHtml(normalizeSymbolAliases(raw));
+            return sanitizeTheoryHtml(raw);
         }
 
         function htmlToPlainText(html) {
@@ -735,8 +873,18 @@
         function saveStudentActivityCloud(){
             if((currentUser?.role==='aluno' || currentUser?.role==='moderador') && window.saveStudentStateToCloud){
                 const student = registeredStudents.find(s => String(s.email||'').toLowerCase()===String(currentUser.email||'').toLowerCase()) || currentUser;
-                window.saveStudentStateToCloud(student,{ favorites:getFavoriteMap(), history:studentHistory[currentStudentKey()]||{}, notes:studentNotes[currentStudentKey()]||{}, cuts:getCutMap(), questionTimes:studentQuestionTimes[currentStudentKey()]||{}, dailyEvolution:studentDailyEvolution[currentStudentKey()]||{} }).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
+                return window.saveStudentStateToCloud(student,{
+                    performance: multiStudentPerf[currentUser.name] || {},
+                    cronograma: getUserCronograma(),
+                    favorites:getFavoriteMap(),
+                    history:studentHistory[currentStudentKey()]||{},
+                    notes:studentNotes[currentStudentKey()]||{},
+                    cuts:getCutMap(),
+                    questionTimes:studentQuestionTimes[currentStudentKey()]||{},
+                    dailyEvolution:studentDailyEvolution[currentStudentKey()]||{}
+                }).catch(err=>console.warn('Falha ao sincronizar atividades do aluno:',err));
             }
+            return Promise.resolve();
         }
         function toggleFavorite(qId){
             if(currentUser.role==='visitante'){ alert('Faça login para salvar questões favoritas.'); openAuthModal(); return; }
@@ -949,22 +1097,98 @@
             switchMainTab('edital');
         }
 
+        const RichFont = Quill.import('formats/font');
+        RichFont.whitelist = ['sans', 'serif', 'monospace'];
+        Quill.register(RichFont, true);
+        const RichSize = Quill.import('formats/size');
+        RichSize.whitelist = ['small', false, 'large', 'huge'];
+        Quill.register(RichSize, true);
+
+        const richToolbarOptions = [
+            [{ font: ['sans', 'serif', 'monospace'] }, { size: ['small', false, 'large', 'huge'] }],
+            [{ header: [1, 2, 3, 4, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ color: [] }, { background: [] }],
+            [{ align: ['', 'center', 'right', 'justify'] }],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            [{ script: 'sub' }, { script: 'super' }],
+            [{ indent: '-1' }, { indent: '+1' }],
+            ['blockquote', 'link', 'clean']
+        ];
+
+        let questionEditors = {};
+        let lastRichEditor = null;
+
         function initQuillEditor() {
             if (!quillTopicEditor && document.getElementById('quill-editor-topic')) {
                 quillTopicEditor = new Quill('#quill-editor-topic', {
                     theme: 'snow',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            [{ 'align': [] }],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            ['link', 'video'],
-                            ['clean']
-                        ]
-                    }
+                    modules: { toolbar: richToolbarOptions }
                 });
+                quillTopicEditor.on('selection-change', range => { if (range) lastRichEditor = quillTopicEditor; });
             }
+        }
+
+        function initQuestionEditors() {
+            if (Object.keys(questionEditors).length) return;
+            ['statement','opt0','opt1','opt2','opt3','opt4','explanation'].forEach(key => {
+                const el = document.getElementById(`q-edit-${key}`);
+                if (!el) return;
+                questionEditors[key] = new Quill(el, {
+                    theme: 'snow',
+                    modules: { toolbar: '#question-rich-toolbar' }
+                });
+                questionEditors[key].on('focus', () => { lastRichEditor = questionEditors[key]; });
+                questionEditors[key].on('selection-change', range => {
+                    if (range) lastRichEditor = questionEditors[key];
+                });
+            });
+        }
+
+        function legacyRichHtml(value) {
+            const raw = String(value ?? '');
+            if (/<(?:p|div|h[1-6]|ul|ol|li|strong|em|u|s|blockquote|table)\b/i.test(raw)) {
+                return sanitizeTheoryHtml(raw);
+            }
+            return escapeHtml(normalizeSymbolAliases(raw)).replace(/\r?\n/g, '<br>');
+        }
+
+        function setQuestionEditorValue(key, value) {
+            initQuestionEditors();
+            const editor = questionEditors[key];
+            if (editor) editor.root.innerHTML = legacyRichHtml(value);
+        }
+
+        function getQuestionEditorValue(key) {
+            initQuestionEditors();
+            const editor = questionEditors[key];
+            return editor ? sanitizeTheoryHtml(normalizeSymbolAliases(editor.root.innerHTML)).trim() : '';
+        }
+
+        function questionEditorHasContent(key) {
+            initQuestionEditors();
+            const editor = questionEditors[key];
+            if (!editor) return false;
+            return String(editor.getText() || '').trim().length > 0;
+        }
+
+        function insertMathSymbol(symbol) {
+            initQuestionEditors();
+            const editor = lastRichEditor || questionEditors.statement;
+            if (!editor) return;
+            editor.focus();
+            const range = editor.getSelection(true) || { index: editor.getLength(), length: 0 };
+            editor.insertText(range.index, symbol, 'user');
+            editor.setSelection(range.index + symbol.length, 0, 'user');
+        }
+
+        function insertTheoryMathSymbol(symbol) {
+            if (!quillTopicEditor) initQuillEditor();
+            if (!quillTopicEditor) return;
+            quillTopicEditor.focus();
+            const range = quillTopicEditor.getSelection(true) || { index: quillTopicEditor.getLength(), length: 0 };
+            quillTopicEditor.insertText(range.index, symbol, 'user');
+            quillTopicEditor.setSelection(range.index + symbol.length, 0, 'user');
         }
 
         function toggleTheme() {
@@ -1196,13 +1420,16 @@
             currentUser = { role: 'aluno', name: name, email: email, pass: pass };
             localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
 
+            if (window.loadStudentStateFromCloud) {
+                try { await window.loadStudentStateFromCloud(email); } catch (err) {}
+            }
             alert(`Cadastro realizado com sucesso! Bem-vindo(a), ${name}.`);
             closeAuthModal();
             updateUserUI();
             switchMainTab('cronograma');
         }
 
-        function handleAdminLogin(e) {
+        async function handleAdminLogin(e) {
             e.preventDefault();
             const u = document.getElementById('admin-user').value.trim();
             const p = document.getElementById('admin-pass').value.trim();
@@ -1218,6 +1445,10 @@
                 if (found) {
                     currentUser = { role: found.role === 'moderador' ? 'moderador' : 'aluno', name: found.name, email: found.email, pass: found.pass };
                     localStorage.setItem('ctrb_user', JSON.stringify(currentUser));
+                    if (window.loadStudentStateFromCloud) {
+                        try { await window.loadStudentStateFromCloud(found.email); }
+                        catch (err) { console.warn('Não foi possível carregar o desempenho da nuvem no login:', err); }
+                    }
                     syncStudentProgression();
                     updateUserUI();
                     closeAuthModal();
@@ -1361,8 +1592,8 @@
                 const renderQuestion=(q,idx)=>{ const activity=getQuestionActivity(q.id); const cuts=getCutMap()[q.id]||{}; const note=((studentNotes[activeKey]||{})[q.id]||'').replace(/"/g,'&quot;'); const showProof=questionBankState.mode==='prova'&&questionBankState.showProofResults&&activity.attempts; startQuestionTimer(q.id); return `<article class="border border-slate-200 dark:border-slate-700 rounded-2xl p-5 bg-white dark:bg-slate-900 shadow-sm space-y-4" id="question-${q.id}">
                     <div class="flex flex-wrap justify-between items-center gap-2"><div class="flex gap-2 items-center"><span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold px-2.5 py-1 rounded-md">Questão ${startIdx+idx+1}</span><span class="text-[10px] font-bold px-2 py-1 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">${optionLabel(q)}</span>${activity.attempts?`<span class="text-[10px] px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">${activity.attempts} tentativa(s)</span>`:''}</div>
                     <div class="flex items-center gap-2">${currentUser.role!=='visitante'?`<button onclick="toggleFavorite('${q.id}')" title="${isFavorite(q.id)?'Remover dos favoritos':'Salvar nos favoritos'}" class="text-slate-400 hover:text-amber-500 p-1"><i class="fa-star ${isFavorite(q.id)?'fa-solid favorite-active':'fa-regular'}"></i></button>`:''}${canManageContent()?`<button onclick="openEditQuestionModal('${q.topicId}','${q.id}')" class="text-xs text-slate-400 hover:text-amber-500">Editar</button><button onclick="deleteQuestion('${q.topicId}','${q.id}')" class="text-xs text-red-400">Excluir</button>`:''}</div></div>
-                    <p class="text-sm font-medium text-slate-800 dark:text-slate-100">${renderRichText(q.statement)}</p>
-                    <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${renderRichText(opt)}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
+                    <p class="text-sm font-medium text-slate-800 dark:text-slate-100">${renderRichText(q.statement, {allowHtml:true})}</p>
+                    <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${renderRichText(opt, {allowHtml:true})}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
                     <div class="flex flex-wrap gap-2"><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-700 text-white dark:text-amber-300 text-xs font-bold px-4 py-2 rounded-xl">${questionBankState.mode==='prova'?'Registrar resposta':'Responder e Ver Gabarito'}</button>${currentUser.role!=='visitante'?`<button onclick="focusQuestionNote('${q.id}')" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-note-sticky"></i> Anotação</button>`:''}</div>
                     ${currentUser.role!=='visitante'?`<input id="note_${q.id}" value="${note}" onchange="saveQuestionNote('${q.id}',this.value)" placeholder="Anote seu raciocínio, dúvida ou ponto para revisar..." class="hidden w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200">`:''}
                     <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s`:''}</div>
@@ -1642,11 +1873,11 @@
             if(isCorrect){
                 adjustPerformance(tId,'acerto',1);
                 feedbackDiv.className='text-xs p-4 rounded-xl border border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText)}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderRichText(motivation)}</p></div>`;
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText, {allowHtml:true})}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderRichText(motivation, {allowHtml:true})}</p></div>`;
             } else {
                 adjustPerformance(tId,'erro',1);
                 feedbackDiv.className='text-xs p-4 rounded-xl border border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-950 dark:text-red-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText)}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderRichText(motivation)}</p></div>`;
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText, {allowHtml:true})}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderRichText(motivation, {allowHtml:true})}</p></div>`;
             }
             if(window.MathJax) MathJax.typesetPromise();
         }
@@ -1669,20 +1900,40 @@
                     String(s.email || '').toLowerCase() === String(currentUser.email || '').toLowerCase()
                 ) || currentUser;
 
-                window.saveStudentStateToCloud(student, {
-                    performance: multiStudentPerf[uName],
-                    cronograma: getUserCronograma()
-                }).catch(err => console.warn('Falha ao sincronizar desempenho:', err));
+                saveStudentActivityCloud().catch(err => console.warn('Falha ao sincronizar desempenho:', err));
             }
+        }
+
+        function normalizeCorrectIndex(value, maxOptions = 5) {
+            if (typeof value === 'number' && Number.isFinite(value)) {
+                return Math.min(Math.max(Math.trunc(value), 0), maxOptions - 1);
+            }
+            const raw = String(value ?? '').trim().toUpperCase();
+            const letterIndex = { A:0, B:1, C:2, D:3, E:4 };
+            if (letterIndex[raw] !== undefined && letterIndex[raw] < maxOptions) return letterIndex[raw];
+            const n = Number(raw);
+            if (Number.isFinite(n)) return Math.min(Math.max(Math.trunc(n), 0), maxOptions - 1);
+            return 0;
         }
 
         function toggleQuestionTypeFields() {
             const type = document.getElementById('q-edit-type')?.value || 'multipla';
             const ids = ['q-edit-opt0','q-edit-opt1','q-edit-opt2','q-edit-opt3','q-edit-opt4'];
             const placeholders = type === 'certo_errado' ? ['Certo','Errado','','',''] : ['Opção A','Opção B','Opção C','Opção D','Opção E'];
-            ids.forEach((id,i)=>{ const el=document.getElementById(id); if (!el) return; el.placeholder=placeholders[i]; el.required = i < (type==='certo_errado'?2:5); el.parentElement?.classList.toggle('hidden', i >= (type==='certo_errado'?2:5)); });
+            const visibleCount = type === 'certo_errado' ? 2 : 5;
+            ids.forEach((id,i)=>{
+                const el=document.getElementById(id); if (!el) return;
+                el.placeholder=placeholders[i];
+                el.parentElement?.classList.toggle('hidden', i >= visibleCount);
+            });
             const correct = document.getElementById('q-edit-correct');
-            if (correct) correct.innerHTML = type === 'certo_errado' ? '<option value="0">Certo</option><option value="1">Errado</option>' : '<option value="0">Opção A</option><option value="1">Opção B</option><option value="2">Opção C</option><option value="3">Opção D</option><option value="4">Opção E</option>';
+            if (correct) {
+                const previous = normalizeCorrectIndex(correct.value, visibleCount);
+                correct.innerHTML = type === 'certo_errado'
+                    ? '<option value="0">Certo</option><option value="1">Errado</option>'
+                    : '<option value="0">Opção A</option><option value="1">Opção B</option><option value="2">Opção C</option><option value="3">Opção D</option><option value="4">Opção E</option>';
+                correct.value = String(previous);
+            }
         }
 
         function openContentManagementModal() {
@@ -1716,15 +1967,11 @@
             document.getElementById('q-edit-id').value = '';
             document.getElementById('q-edit-topic-id').value = topicId || currentSubTopicId;
             document.getElementById('q-edit-type').value = 'multipla';
-            document.getElementById('q-edit-statement').value = '';
-            document.getElementById('q-edit-opt0').value = '';
-            document.getElementById('q-edit-opt1').value = '';
-            document.getElementById('q-edit-opt2').value = '';
-            document.getElementById('q-edit-opt3').value = '';
-            document.getElementById('q-edit-opt4').value = '';
-            document.getElementById('q-edit-correct').value = '0';
-            document.getElementById('q-edit-explanation').value = '';
+            initQuestionEditors();
+            ['statement','opt0','opt1','opt2','opt3','opt4','explanation'].forEach(key => setQuestionEditorValue(key, ''));
+            setQuestionEditorValue('explanation', '');
             toggleQuestionTypeFields();
+            document.getElementById('q-edit-correct').value = '0';
 
             const sel = document.getElementById('q-edit-target-topic');
             sel.innerHTML = topicsData.map(t => `<option value="${t.id}" ${t.id === (topicId || currentSubTopicId) ? 'selected' : ''}>${t.title}</option>`).join('');
@@ -1742,14 +1989,15 @@
             document.getElementById('q-edit-topic-id').value = topicId;
             document.getElementById('q-edit-type').value = q.type || 'multipla';
             document.getElementById('q-edit-difficulty').value = q.difficulty || 'Média';
-            document.getElementById('q-edit-statement').value = q.statement || '';
-            document.getElementById('q-edit-opt0').value = q.options[0] || '';
-            document.getElementById('q-edit-opt1').value = q.options[1] || '';
-            document.getElementById('q-edit-opt2').value = q.options[2] || '';
-            document.getElementById('q-edit-opt3').value = q.options[3] || '';
-            document.getElementById('q-edit-opt4').value = q.options[4] || '';
-            document.getElementById('q-edit-correct').value = q.correct || 0;
-            document.getElementById('q-edit-explanation').value = q.explanation || '';
+            initQuestionEditors();
+            setQuestionEditorValue('statement', q.statement || '');
+            setQuestionEditorValue('opt0', q.options?.[0] || '');
+            setQuestionEditorValue('opt1', q.options?.[1] || '');
+            setQuestionEditorValue('opt2', q.options?.[2] || '');
+            setQuestionEditorValue('opt3', q.options?.[3] || '');
+            setQuestionEditorValue('opt4', q.options?.[4] || '');
+            setQuestionEditorValue('explanation', q.explanation || '');
+            document.getElementById('q-edit-correct').value = String(normalizeCorrectIndex(q.correct, (q.type || 'multipla') === 'certo_errado' ? 2 : 5));
             toggleQuestionTypeFields();
 
             const sel = document.getElementById('q-edit-target-topic');
@@ -1770,14 +2018,22 @@
 
             const difficulty = document.getElementById('q-edit-difficulty').value;
             const type = document.getElementById('q-edit-type').value;
-            const statement = normalizeSymbolAliases(document.getElementById('q-edit-statement').value.trim());
-            const opt0 = normalizeSymbolAliases(document.getElementById('q-edit-opt0').value.trim());
-            const opt1 = normalizeSymbolAliases(document.getElementById('q-edit-opt1').value.trim());
-            const opt2 = normalizeSymbolAliases(document.getElementById('q-edit-opt2').value.trim());
-            const opt3 = normalizeSymbolAliases(document.getElementById('q-edit-opt3').value.trim());
-            const opt4 = normalizeSymbolAliases(document.getElementById('q-edit-opt4').value.trim());
-            const correct = parseInt(document.getElementById('q-edit-correct').value);
-            const explanation = normalizeSymbolAliases(document.getElementById('q-edit-explanation').value.trim());
+            const statement = getQuestionEditorValue('statement');
+            const opt0 = getQuestionEditorValue('opt0');
+            const opt1 = getQuestionEditorValue('opt1');
+            const opt2 = getQuestionEditorValue('opt2');
+            const opt3 = getQuestionEditorValue('opt3');
+            const opt4 = getQuestionEditorValue('opt4');
+            const correct = normalizeCorrectIndex(document.getElementById('q-edit-correct').value, type === 'certo_errado' ? 2 : 5);
+            const explanation = getQuestionEditorValue('explanation');
+
+            const requiredEditors = type === 'certo_errado'
+                ? ['statement','opt0','opt1']
+                : ['statement','opt0','opt1','opt2','opt3','opt4'];
+            if (requiredEditors.some(key => !questionEditorHasContent(key))) {
+                alert('Preencha o enunciado e todas as alternativas obrigatórias antes de salvar.');
+                return;
+            }
 
             const isNew = !qId;
             const questionData = {
@@ -2299,7 +2555,10 @@
                             <span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Moderação Master</span>
                             <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Painel do Professor - Acompanhamento de Alunos</h2>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" onclick="window.publishLocalContentSnapshotToCloud(true).then(()=>{renderMainContent(); alert('Conteúdo deste computador publicado no Firebase.');}).catch(err=>{console.error(err); alert('Não foi possível publicar o conteúdo. Verifique a conexão e as regras do Firestore.');})" class="bg-slate-900 hover:bg-slate-800 text-amber-400 px-3 py-2 rounded-lg text-xs font-bold border border-amber-500/30" title="Publicar inclusões, edições e exclusões deste computador no Firebase">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar conteúdo
+                            </button>
                             <label class="text-xs font-bold text-slate-600 dark:text-slate-300">Selecionar Aluno:</label>
                             <select onchange="profSelectedStudentName = this.value; renderMainContent();" class="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs rounded-lg px-3 py-1.5 font-bold text-amber-600 dark:text-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500">
                                 ${registeredStudents.map(st => `<option value="${st.name}" ${st.name === currentStudent.name ? 'selected' : ''}>${st.name} (${st.email})</option>`).join('')}
@@ -2490,6 +2749,14 @@
 
   const nowISO = () => new Date().toISOString();
 
+  /*
+   * Conteúdo público é centralizado no Firestore. O HTML/localStorage é apenas
+   * cache. Para alterações feitas diretamente no HTML, altere a versão abaixo
+   * e, no próximo acesso do professor, o catálogo local deste dispositivo será
+   * publicado na nuvem uma única vez. Usuários comuns nunca sobrescrevem a nuvem.
+   */
+  const HTML_CONTENT_VERSION = '2026-08-31-v3';
+
   /* ============================================================
      ALUNOS
      ============================================================ */
@@ -2503,6 +2770,46 @@
       role: student.role || 'aluno',
       updatedAt: nowISO()
     }, { merge: true });
+  };
+
+  window.loadStudentStateFromCloud = async function(email) {
+    if (!email) return null;
+    const snap = await getDoc(doc(db, 'alunos', studentDocId(email)));
+    if (!snap.exists()) return null;
+    const s = snap.data() || {};
+    const key = String(s.email || email).trim().toLowerCase();
+    if (s.performance && s.name) {
+      multiStudentPerf[s.name] = s.performance;
+      localStorage.setItem('ctrb_multi_perf', JSON.stringify(multiStudentPerf));
+    }
+    if (s.history) {
+      studentHistory[key] = s.history;
+      localStorage.setItem('ctrb_student_history', JSON.stringify(studentHistory));
+    }
+    if (s.favorites) {
+      studentFavorites[key] = s.favorites;
+      localStorage.setItem('ctrb_student_favorites', JSON.stringify(studentFavorites));
+    }
+    if (s.notes) {
+      studentNotes[key] = s.notes;
+      localStorage.setItem('ctrb_student_notes', JSON.stringify(studentNotes));
+    }
+    if (s.cuts) {
+      studentCuts[key] = s.cuts;
+      localStorage.setItem('ctrb_student_cuts', JSON.stringify(studentCuts));
+    }
+    if (s.questionTimes) {
+      studentQuestionTimes[key] = s.questionTimes;
+      localStorage.setItem('ctrb_student_question_times', JSON.stringify(studentQuestionTimes));
+    }
+    if (s.dailyEvolution) {
+      studentDailyEvolution[key] = s.dailyEvolution;
+      localStorage.setItem('ctrb_student_daily_evolution', JSON.stringify(studentDailyEvolution));
+    }
+    if (Array.isArray(s.cronograma) && s.name) {
+      localStorage.setItem(`ctrb_cronograma_${s.name}`, JSON.stringify(s.cronograma));
+    }
+    return s;
   };
 
   window.saveStudentStateToCloud = async function(student, state = {}) {
@@ -2718,6 +3025,46 @@
   window.deleteSimuladoFromCloud = async function(id) { if(id) await deleteDoc(doc(db,'simulados',safeDocId(id))); };
   window.saveContentCatalogToCloud = async function(disciplines) { await setDoc(doc(db,'configuracoes','conteudo'), { disciplines, updatedAt: nowISO() }, {merge:true}); };
 
+  window.publishLocalContentSnapshotToCloud = async function(force = false) {
+    const localVersion = localStorage.getItem('ctrb_html_content_version');
+    if (!force && localVersion === HTML_CONTENT_VERSION) return;
+    if (typeof currentUser === 'undefined' || currentUser.role !== 'admin') return;
+    if (!force && !confirm('Esta versão do site pode conter alterações feitas diretamente no HTML. Deseja publicar o conteúdo deste computador no Firebase, incluindo novas questões e exclusões?')) return;
+
+    // Esta publicação é deliberada e exclusiva do administrador.
+    // Publicamos módulos e questões atuais e removemos documentos que não existem
+    // mais no catálogo local, resolvendo inclusões/edições/exclusões feitas no HTML.
+    const localTopics = Array.isArray(topicsData) ? topicsData : [];
+    const localQuestions = [];
+    Object.entries(masterQuestions || {}).forEach(([topicId, list]) => {
+      (Array.isArray(list) ? list : []).forEach(q => localQuestions.push({
+        ...q,
+        topicId: q.topicId || topicId
+      }));
+    });
+
+    const [topicSnap, questionSnap] = await Promise.all([
+      getDocs(collection(db, 'modulos')),
+      getDocs(collection(db, 'questoes'))
+    ]);
+
+    const localTopicIds = new Set(localTopics.map(t => safeDocId(t.id)));
+    const localQuestionIds = new Set(localQuestions.map(q => safeDocId(q.id)));
+
+    for (const topic of localTopics) await window.saveTopicToCloud(topic.id, topic);
+    for (const q of localQuestions) await window.saveQuestionToCloud(q);
+
+    for (const d of topicSnap.docs) {
+      if (!localTopicIds.has(d.id)) await deleteDoc(doc(db, 'modulos', d.id));
+    }
+    for (const d of questionSnap.docs) {
+      if (!localQuestionIds.has(d.id)) await deleteDoc(doc(db, 'questoes', d.id));
+    }
+
+    localStorage.setItem('ctrb_html_content_version', HTML_CONTENT_VERSION);
+    console.log('Snapshot do conteúdo do HTML publicado no Firestore.');
+  }
+
   async function migratePublicContentIfCloudIsEmpty() {
     // ---------- MÓDULOS ----------
     const topicSnap = await getDocs(collection(db, 'modulos'));
@@ -2879,6 +3226,9 @@
   };
 
   async function initializeCloudContent() {
+    try { await window.publishLocalContentSnapshotToCloud(); } catch (err) {
+      console.warn('Não foi possível publicar a versão do HTML no Firestore:', err);
+    }
     try { await migratePublicContentIfCloudIsEmpty(); } catch (err) { console.warn('Não foi possível migrar conteúdo local para o Firestore:', err); }
     try {
       const catRef=doc(db,'configuracoes','conteudo'); const catSnap=await getDoc(catRef); if(!catSnap.exists()) await window.saveContentCatalogToCloud(disciplinesData);
