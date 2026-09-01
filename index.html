@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="light">
 <head>
@@ -1627,7 +1628,7 @@
                     <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${renderRichText(opt, {allowHtml:true})}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
                     <div class="flex flex-wrap gap-2"><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-700 text-white dark:text-amber-300 text-xs font-bold px-4 py-2 rounded-xl">${questionBankState.mode==='prova'?'Registrar resposta':'Responder e Ver Gabarito'}</button>${currentUser.role!=='visitante'?`<button onclick="focusQuestionNote('${q.id}')" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-note-sticky"></i> Anotação</button>`:''}</div>
                     ${currentUser.role!=='visitante'?`<input id="note_${q.id}" value="${note}" onchange="saveQuestionNote('${q.id}',this.value)" placeholder="Anote seu raciocínio, dúvida ou ponto para revisar..." class="hidden w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200">`:''}
-                    <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s`:''}</div>
+                    <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s${q.explanation?`<div class=\"mt-2 pt-2 border-t border-slate-200 dark:border-slate-700\"><span class=\"font-bold uppercase text-[10px] tracking-wider block mb-1\"><i class=\"fa-solid fa-lightbulb\"></i> Motivação / Fundamentação:</span><div class=\"leading-relaxed font-medium\">${renderRichText(q.explanation,{allowHtml:true})}</div></div>`:''}`:''}</div>
                 </article>`; };
                 main.innerHTML=`<div class="space-y-6"><div class="border-b border-slate-200 dark:border-slate-800 pb-4"><div class="flex flex-wrap justify-between items-center gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Questões</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Pratique, revise e acompanhe sua evolução</h2></div>${canManageContent()?`<button onclick="openAddQuestionModal()" class="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ Adicionar Questão</button>`:''}</div></div>
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/60 dark:bg-slate-900/70">
@@ -2799,6 +2800,11 @@
      COMANDO DE MANUTENÇÃO: "MODO PRESERVAÇÃO TOTAL — ALTERE SOMENTE
      O QUE EU PEDIR".
      Este bloco é um contrato técnico/documental para futuras edições.
+     PROTEÇÃO: não fazer refatoração, limpeza, otimização, reorganização,
+     atualização de bibliotecas ou correções colaterais durante uma alteração
+     solicitada. Se a solicitação for sobre UMA função/campo, tocar somente
+     nessa função/campo e preservar todo o restante byte a byte sempre que
+     tecnicamente possível.
      ============================================================ */
 
   /* ============================================================
