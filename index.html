@@ -2101,9 +2101,9 @@
                     // Primeiro grava a nova versão. Só depois remove a cópia antiga,
                     // evitando deixar a questão sem cópia na nuvem se houver falha.
                     await window.saveQuestionToCloud(questionData);
-                    if (!isNew && originalTopicId && originalTopicId !== targetTopicId && window.deleteQuestionFromCloud) {
-                        await window.deleteQuestionFromCloud(qId);
-                    }
+                    // A mudança de subtópico mantém o mesmo ID da questão;
+                    // o setDoc acima já atualiza o documento correto na nuvem.
+                    // NÃO excluir o mesmo qId depois de salvá-lo.
                 } catch (err) {
                     console.error('Falha ao sincronizar questão com o Firestore:', err);
                     alert('A questão foi salva neste dispositivo, mas não foi sincronizada com a nuvem. Verifique a conexão com o Firebase.');
@@ -2775,6 +2775,9 @@
     encodeURIComponent(String(id || '').trim());
 
   const nowISO = () => new Date().toISOString();
+  // IDs de questões excluídas ficam registrados na nuvem para impedir
+  // que o catálogo inicial embutido no HTML as recrie em outro dispositivo.
+  let deletedQuestionIds = new Set();
 
   /*
    * Conteúdo público é centralizado no Firestore. O HTML/localStorage é apenas
@@ -2782,7 +2785,21 @@
    * e, no próximo acesso do professor, o catálogo local deste dispositivo será
    * publicado na nuvem uma única vez. Usuários comuns nunca sobrescrevem a nuvem.
    */
-  const HTML_CONTENT_VERSION = '2026-08-31-v3';
+  const HTML_CONTENT_VERSION = '2026-08-31-v4';
+
+  /* ============================================================
+     CONTRATO DE ALTERAÇÃO CONTROLADA — NÃO MODIFICAR SEM PEDIDO
+     ============================================================
+     REGRA: em futuras alterações deste HTML, alterar SOMENTE o que
+     foi explicitamente solicitado pelo administrador. NÃO remover,
+     substituir ou reestruturar MathLab, aliases, Firebase/Firestore,
+     sincronização de desempenho aluno/professor, abas, permissões,
+     painel do professor/admin, estrutura visual ou outras funções
+     existentes, salvo pedido explícito.
+     COMANDO DE MANUTENÇÃO: "MODO PRESERVAÇÃO TOTAL — ALTERE SOMENTE
+     O QUE EU PEDIR".
+     Este bloco é um contrato técnico/documental para futuras edições.
+     ============================================================ */
 
   /* ============================================================
      ALUNOS
@@ -3086,15 +3103,27 @@
 
   window.saveQuestionToCloud = async function(questionData) {
     if (!questionData || !questionData.id) throw new Error('Questão sem ID.');
-    await setDoc(doc(db, 'questoes', safeDocId(questionData.id)), {
+    const qid = safeDocId(questionData.id);
+    await setDoc(doc(db, 'questoes', qid), {
       ...questionData,
       updatedAt: nowISO()
     }, { merge: true });
+    // Salvar explicitamente uma questão significa que ela foi criada/recriada.
+    await deleteDoc(doc(db, 'questoes_excluidas', qid));
+    deletedQuestionIds.delete(qid);
   };
 
   window.deleteQuestionFromCloud = async function(questionId) {
     if (!questionId) return;
-    await deleteDoc(doc(db, 'questoes', safeDocId(questionId)));
+    const qid = safeDocId(questionId);
+    // Primeiro registra a exclusão de forma durável; depois remove a questão.
+    // Assim, um HTML/cache antigo em outro dispositivo não pode recriá-la.
+    await setDoc(doc(db, 'questoes_excluidas', qid), {
+      questionId: String(questionId),
+      deletedAt: nowISO()
+    }, { merge: true });
+    deletedQuestionIds.add(qid);
+    await deleteDoc(doc(db, 'questoes', qid));
   };
 
   window.savePublicConfigToCloud = async function(config) {
@@ -3125,10 +3154,15 @@
     const localTopics = Array.isArray(topicsData) ? topicsData : [];
     const localQuestions = [];
     Object.entries(masterQuestions || {}).forEach(([topicId, list]) => {
-      (Array.isArray(list) ? list : []).forEach(q => localQuestions.push({
-        ...q,
-        topicId: q.topicId || topicId
-      }));
+      (Array.isArray(list) ? list : []).forEach(q => {
+        // Nunca ressuscitar, por publicação de um HTML antigo, uma questão
+        // que já possui tombstone de exclusão na nuvem.
+        if (deletedQuestionIds.has(safeDocId(q.id))) return;
+        localQuestions.push({
+          ...q,
+          topicId: q.topicId || topicId
+        });
+      });
     });
 
     const [topicSnap, questionSnap] = await Promise.all([
@@ -3168,8 +3202,14 @@
     }
 
     // ---------- QUESTÕES ----------
-    const questionSnap = await getDocs(collection(db, 'questoes'));
-    if (questionSnap.empty && typeof masterQuestions !== 'undefined' && masterQuestions) {
+    // A coleção de exclusões é uma trava contra a recriação de questões
+    // apagadas quando outro dispositivo possui o catálogo antigo embutido.
+    const [questionSnap, deletedQuestionSnap] = await Promise.all([
+      getDocs(collection(db, 'questoes')),
+      getDocs(collection(db, 'questoes_excluidas'))
+    ]);
+    deletedQuestionIds = new Set(deletedQuestionSnap.docs.map(d => d.id));
+    if (questionSnap.empty && deletedQuestionSnap.empty && typeof masterQuestions !== 'undefined' && masterQuestions) {
       for (const [topicId, list] of Object.entries(masterQuestions)) {
         for (const q of (Array.isArray(list) ? list : [])) {
           await window.saveQuestionToCloud({
@@ -3231,19 +3271,21 @@
     const grouped = {};
 
     questionDocs.forEach(d => {
+      // Questões marcadas como excluídas nunca entram no catálogo local,
+      // mesmo que algum cache/HTML antigo ainda as contenha.
+      if (deletedQuestionIds.has(d.id)) return;
       const q = { id: d.id, ...(d.data() || {}) };
       if (!q.topicId) return;
       if (!grouped[q.topicId]) grouped[q.topicId] = [];
       grouped[q.topicId].push(q);
     });
 
-    // Se a coleção existe na nuvem, ela passa a ser a fonte oficial.
-    if (questionDocs.length > 0) {
-      if (typeof masterQuestions !== 'undefined') {
-        masterQuestions = grouped;
-      }
-      localStorage.setItem('ctrb_questions_data', JSON.stringify(grouped));
+    // O Firestore é SEMPRE a fonte oficial: inclusive snapshot vazio.
+    // Isso impede que questões antigas do localStorage/HTML reapareçam.
+    if (typeof masterQuestions !== 'undefined') {
+      masterQuestions = grouped;
     }
+    localStorage.setItem('ctrb_questions_data', JSON.stringify(grouped));
 
     if (typeof renderMainContent === 'function') renderMainContent();
   }
@@ -3268,6 +3310,7 @@
   let unsubscribeTopics = null;
   let unsubscribeQuestions = null;
   let unsubscribePublicConfig = null;
+  let unsubscribeDeletedQuestions = null;
 
   window.startPublicContentRealtime = function() {
     if (!unsubscribeTopics) {
@@ -3277,6 +3320,19 @@
           applyCloudTopics(snapshot.docs);
         },
         error => console.error('Erro no listener de módulos/teoria:', error)
+      );
+    }
+
+    if (!unsubscribeDeletedQuestions) {
+      unsubscribeDeletedQuestions = onSnapshot(
+        collection(db, 'questoes_excluidas'),
+        snapshot => {
+          deletedQuestionIds = new Set(snapshot.docs.map(d => d.id));
+          // Reaplica o catálogo oficial depois que a lista de exclusões mudar.
+          getDocs(collection(db, 'questoes')).then(qSnap => applyCloudQuestions(qSnap.docs))
+            .catch(err => console.error('Erro ao reaplicar questões após exclusões:', err));
+        },
+        error => console.error('Erro no listener de exclusões de questões:', error)
       );
     }
 
@@ -3314,6 +3370,12 @@
     // portanto, uma publicação automática poderia recriar questões excluídas.
     // A publicação de inclusões/edições/exclusões feitas diretamente no HTML
     // continua disponível exclusivamente pelo botão do Painel do Professor.
+    try {
+      const deletedSnap = await getDocs(collection(db, 'questoes_excluidas'));
+      deletedQuestionIds = new Set(deletedSnap.docs.map(d => d.id));
+    } catch (err) {
+      console.warn('Não foi possível carregar a trava de exclusões:', err);
+    }
     try { await migratePublicContentIfCloudIsEmpty(); } catch (err) { console.warn('Não foi possível inicializar o conteúdo do Firestore:', err); }
     try {
       const catRef=doc(db,'configuracoes','conteudo'); const catSnap=await getDoc(catRef); if(!catSnap.exists()) await window.saveContentCatalogToCloud(disciplinesData);
