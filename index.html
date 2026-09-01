@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!-- CTRB_PRESERVACAO_TOTAL -->
+<!-- CTRB_PRESERVACAO_TOTAL
+REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
+1) ALTERAR SOMENTE o item explicitamente solicitado pelo usuário.
+2) NÃO alterar, remover, refatorar, reorganizar ou otimizar qualquer outra parte do HTML/JS/CSS.
+3) PRESERVAR integralmente: MathLab; aliases/símbolos; Firebase; Firestore; sincronização em tempo real; desempenho e histórico de aluno; painel e desempenho do professor; alunos/cadastros; cronograma; simulados; abas; permissões; layout; teoria/materiais; banco de questões; criação, edição e exclusão de questões; e a persistência dessas alterações entre dispositivos, abas anônimas e localStorage.
+4) Exclusões devem continuar permanentes e não podem ser recriadas pelo HTML/cache/localStorage em outro dispositivo.
+5) Edições devem atualizar a questão existente, sem criar duplicata, e novas questões só podem existir quando explicitamente criadas pelo professor.
+6) NÃO modificar nenhuma dessas áreas em solicitação futura, salvo pedido expresso do usuário.
+7) NÃO aproveitar uma correção para fazer melhorias adicionais.
+8) Este comentário é um contrato de preservação e não possui efeito funcional no site.
+-->
 <html lang="pt-BR" class="light">
 <head>
     <meta charset="UTF-8">
@@ -585,9 +597,10 @@
                     </select>
                 </div>
 
-                <div>
+                <div id="question-explanation-editor-block">
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Motivação / Fundamentação da Resposta (Gabarito Comentado)</label>
-                    <div id="q-edit-explanation" class="rich-question-editor"></div>
+                    <textarea id="q-edit-explanation" rows="10" spellcheck="true" placeholder="Digite ou cole aqui a fundamentação da resposta. Você pode usar Markdown, como **negrito**, listas e LaTeX como $x^2$." class="w-full px-3 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs leading-relaxed focus:ring-2 focus:ring-amber-500 focus:outline-none resize-y"></textarea>
+                    <p class="mt-1 text-[10px] text-slate-400">Este campo é independente dos demais editores e guarda exatamente o texto digitado/colado.</p>
                 </div>
 
                 <div class="pt-2 flex justify-end gap-2">
@@ -831,6 +844,28 @@
                 return markdownToHtml(plain);
             }
             return sanitizeTheoryHtml(raw);
+        }
+
+        // Gabarito Comentado — componente independente.
+        // O conteúdo é armazenado sem transformação; a conversão ocorre somente na exibição.
+        function getQuestionExplanation(question) {
+            if (!question) return '';
+            if (typeof question.explanation === 'string') return question.explanation;
+            if (typeof question.gabaritoComentado === 'string') return question.gabaritoComentado;
+            return '';
+        }
+
+        function renderQuestionExplanation(value) {
+            const raw = String(value ?? '');
+            if (!raw.trim()) return '';
+            const hasHtml = /<\/?(?:p|div|br|h[1-6]|strong|b|em|i|u|s|ul|ol|li|blockquote|a|sub|sup|table|thead|tbody|tr|th|td)\b[^>]*>/i.test(raw);
+            if (hasHtml) return sanitizeTheoryHtml(raw);
+            return markdownToHtml(normalizeSymbolAliases(raw));
+        }
+
+        function renderQuestionExplanationFallback(value) {
+            const rendered = renderQuestionExplanation(value);
+            return rendered || '<span class="text-slate-400">Nenhuma fundamentação ou explicação cadastrada para esta questão.</span>';
         }
 
         function currentStudentKey(){ return String(currentUser?.email || currentUser?.name || 'visitante').toLowerCase(); }
@@ -1081,6 +1116,7 @@
             updateUserUI();
             renderSidebarNav();
             initQuillEditor();
+            initQuestionExplanationField();
 
             // Carrega os alunos da nuvem antes de abrir o painel do professor.
             if (window.loadStudentsFromCloud) {
@@ -1120,6 +1156,17 @@
             ['blockquote', 'link', 'clean']
         ];
 
+        /*
+         * CTRB GABARITO COMENTADO — COMPONENTE ISOLADO
+         *
+         * PROTEÇÃO ABSOLUTA:
+         * - Não compartilhar estado do campo entre questões.
+         * - Não usar o estado interno do Quill para a motivação.
+         * - Não sanitizar, normalizar ou reformatar o texto durante o salvamento.
+         * - Ler/escrever o conteúdo sempre pelo ID da questão atualmente aberta.
+         * - Não alterar Firebase, desempenho, MathLab, aliases, sincronização,
+         *   exclusões permanentes, alunos, professor, abas, simulados ou teoria.
+         */
         let questionEditors = {};
         let lastRichEditor = null;
 
@@ -1135,7 +1182,7 @@
 
         function initQuestionEditors() {
             if (Object.keys(questionEditors).length) return;
-            ['statement','opt0','opt1','opt2','opt3','opt4','explanation'].forEach(key => {
+            ['statement','opt0','opt1','opt2','opt3','opt4'].forEach(key => {
                 const el = document.getElementById(`q-edit-${key}`);
                 if (!el) return;
                 const isAlternative = /^opt[0-4]$/.test(key);
@@ -1162,44 +1209,60 @@
 
         function setQuestionEditorValue(key, value) {
             initQuestionEditors();
+            if (key === 'explanation') {
+                const field = document.getElementById('q-edit-explanation');
+                if (field) field.value = String(value ?? '');
+                return;
+            }
             const editor = questionEditors[key];
-            if (!editor) return;
-            editor.setContents([], 'silent');
-            editor.root.innerHTML = '';
-            if (editor.history && editor.history.clear) editor.history.clear();
-            const raw = String(value ?? '');
-            if (raw) editor.clipboard.dangerouslyPasteHTML(0, legacyRichHtml(raw), 'silent');
-            editor.update('silent');
-            if (editor.history && editor.history.clear) editor.history.clear();
+            if (editor) editor.root.innerHTML = legacyRichHtml(value);
         }
 
         function getQuestionEditorValue(key) {
             initQuestionEditors();
+            if (key === 'explanation') {
+                return document.getElementById('q-edit-explanation')?.value ?? '';
+            }
             const editor = questionEditors[key];
-            if (!editor) return '';
-            const html = String(editor.root.innerHTML || '').trim();
-            if (!html || html === '<p><br></p>' || html === '<p></p>') return '';
-            if (key === 'explanation') return html;
-            return sanitizeTheoryHtml(normalizeSymbolAliases(html)).trim();
-        }
-
-        function renderQuestionExplanation(value) {
-            const raw = String(value ?? '').trim();
-            if (!raw) return 'Nenhuma fundamentação ou explicação cadastrada para esta questão.';
-            const plain = htmlToPlainText(raw);
-            const hasRichTags = /<(strong|b|em|i|u|s|ul|ol|li|blockquote|h[1-6]|table|a|sub|sup|hr)\b/i.test(raw);
-            if (!hasRichTags && /\*\*|__|`|(^|\n)\s*[-*]\s+/m.test(plain)) return renderRichText(plain, {allowHtml:false, markdown:true});
-            return renderRichText(raw, {allowHtml:true});
+            return editor ? sanitizeTheoryHtml(normalizeSymbolAliases(editor.root.innerHTML)).trim() : '';
         }
 
         function questionEditorHasContent(key) {
             initQuestionEditors();
+            if (key === 'explanation') {
+                return String(document.getElementById('q-edit-explanation')?.value ?? '').trim().length > 0;
+            }
             const editor = questionEditors[key];
             if (!editor) return false;
             return String(editor.getText() || '').trim().length > 0;
         }
 
+        let lastQuestionExplanationFocus = false;
+
+        function initQuestionExplanationField() {
+            const field = document.getElementById('q-edit-explanation');
+            if (!field || field.dataset.bound === '1') return;
+            field.dataset.bound = '1';
+            field.addEventListener('focus', () => { lastQuestionExplanationFocus = true; });
+            field.addEventListener('blur', () => { lastQuestionExplanationFocus = true; });
+        }
+
+        function insertQuestionExplanationText(text) {
+            const field = document.getElementById('q-edit-explanation');
+            if (!field) return false;
+            const start = Number.isInteger(field.selectionStart) ? field.selectionStart : field.value.length;
+            const end = Number.isInteger(field.selectionEnd) ? field.selectionEnd : start;
+            field.setRangeText(text, start, end, 'end');
+            field.focus();
+            lastQuestionExplanationFocus = true;
+            return true;
+        }
+
         function insertMathSymbol(symbol) {
+            if (lastQuestionExplanationFocus) {
+                insertQuestionExplanationText(symbol);
+                return;
+            }
             initQuestionEditors();
             const editor = lastRichEditor || questionEditors.statement;
             if (!editor) return;
@@ -1647,7 +1710,7 @@
                     <div class="space-y-2">${q.options.map((opt,i)=>`<div class="question-option-row flex items-stretch gap-2"><label data-option-index="${i}" class="question-option ${cuts[i]?'question-option-cut':''} ${showProof&&i===q.correct?'correct-answer':''} ${showProof&&activity.lastResult==='erro'&&Number(activity.lastAnswer)===i?'wrong-answer':''} flex flex-1 items-center gap-3 text-xs p-3 rounded-xl border cursor-pointer transition"><input type="radio" name="opt_${q.id}" value="${i}"><span>${renderRichText(opt, {allowHtml:true})}</span></label>${currentUser.role!=='visitante'?`<button type="button" onclick="toggleCutQuestion('${q.id}',${i})" title="${cuts[i]?'Descortar alternativa':'Cortar alternativa'}" class="cut-option-btn px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-400 transition ${cuts[i]?'cut-option-active':''}"><i class="fa-solid fa-scissors"></i></button>`:''}</div>`).join('')}</div>
                     <div class="flex flex-wrap gap-2"><button onclick="checkAnswer('${q.id}',${q.correct},'${q.topicId}')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-700 text-white dark:text-amber-300 text-xs font-bold px-4 py-2 rounded-xl">${questionBankState.mode==='prova'?'Registrar resposta':'Responder e Ver Gabarito'}</button>${currentUser.role!=='visitante'?`<button onclick="focusQuestionNote('${q.id}')" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300"><i class="fa-regular fa-note-sticky"></i> Anotação</button>`:''}</div>
                     ${currentUser.role!=='visitante'?`<input id="note_${q.id}" value="${note}" onchange="saveQuestionNote('${q.id}',this.value)" placeholder="Anote seu raciocínio, dúvida ou ponto para revisar..." class="hidden w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200">`:''}
-                    <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s`:''}</div>
+                    <div id="feedback_${q.id}" class="${showProof?'text-xs p-4 rounded-xl border mt-2 block '+(activity.lastResult==='acerto'?'border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-100':'border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-900 dark:text-red-100'):'hidden text-xs p-4 rounded-xl border mt-2'}">${showProof?`<b>${activity.lastResult==='acerto'?'Acertou':'Errou'}</b> • Gabarito: Opção ${['A','B','C','D','E'][q.correct]||''} • Tempo: ${activity.lastSeconds||0}s${getQuestionExplanation(q).trim()?`<div class=\"mt-2 pt-2 border-t border-slate-200 dark:border-slate-700\"><span class=\"font-bold uppercase text-[10px] tracking-wider block mb-1\"><i class=\"fa-solid fa-lightbulb\"></i> Motivação / Fundamentação:</span><div class=\"leading-relaxed font-medium\">${renderQuestionExplanationFallback(getQuestionExplanation(q))}</div></div>`:''}`:''}</div>
                 </article>`; };
                 main.innerHTML=`<div class="space-y-6"><div class="border-b border-slate-200 dark:border-slate-800 pb-4"><div class="flex flex-wrap justify-between items-center gap-3"><div><span class="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase">Banco de Questões</span><h2 class="text-xl font-bold text-slate-800 dark:text-slate-100 mt-1">Pratique, revise e acompanhe sua evolução</h2></div>${canManageContent()?`<button onclick="openAddQuestionModal()" class="bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-lg">+ Adicionar Questão</button>`:''}</div></div>
                     <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50/60 dark:bg-slate-900/70">
@@ -1904,7 +1967,7 @@
             const isCorrect=val===correctIdx;
             const letter=['A','B','C','D','E'][correctIdx] || '';
             const correctText=foundQ?.options?.[correctIdx] || '';
-            const motivation=String(foundQ?.explanation ?? foundQ?.gabaritoComentado ?? '').trim() || 'Nenhuma fundamentação ou explicação cadastrada para esta questão.';
+            const motivation=getQuestionExplanation(foundQ).trim();
             const elapsed=recordQuestionTime(qId);
             const key=currentStudentKey(); if(!studentHistory[key]) studentHistory[key]={};
             const prior=studentHistory[key][qId]||{attempts:0,correct:0,lastResult:null,lastAt:null};
@@ -1924,11 +1987,11 @@
             if(isCorrect){
                 adjustPerformance(tId,'acerto',1);
                 feedbackDiv.className='text-xs p-4 rounded-xl border border-emerald-500/80 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-950 dark:text-emerald-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText, {allowHtml:true})}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderQuestionExplanation(motivation)}</p></div>`;
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400 mb-2 text-sm"><i class="fa-solid fa-circle-check text-base"></i> Resposta Correta!</div><div class="mb-2 font-semibold">Gabarito Oficial: <span class="bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText, {allowHtml:true})}</div><div class="text-[10px] text-emerald-700 dark:text-emerald-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-800/60"><span class="font-bold text-emerald-800 dark:text-emerald-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderQuestionExplanationFallback(motivation)}</p></div>`;
             } else {
                 adjustPerformance(tId,'erro',1);
                 feedbackDiv.className='text-xs p-4 rounded-xl border border-red-500/80 bg-red-50 dark:bg-red-950/80 text-red-950 dark:text-red-100 mt-3 block shadow-sm';
-                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText, {allowHtml:true})}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderQuestionExplanation(motivation)}</p></div>`;
+                feedbackDiv.innerHTML=`<div class="font-bold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2 text-sm"><i class="fa-solid fa-circle-xmark text-base"></i> Resposta Incorreta!</div><div class="mb-2 font-semibold">Gabarito Correto: <span class="bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-100 px-2 py-0.5 rounded">Opção ${letter}</span> - ${renderRichText(correctText, {allowHtml:true})}</div><div class="text-[10px] text-red-700 dark:text-red-300 mb-2">Tempo nesta tentativa: ${elapsed}s</div><div class="mt-2 pt-2 border-t border-red-200 dark:border-red-800/60"><span class="font-bold text-red-800 dark:text-red-300 uppercase text-[10px] tracking-wider block mb-1"><i class="fa-solid fa-lightbulb"></i> Motivação / Fundamentação:</span><p class="leading-relaxed font-medium">${renderQuestionExplanationFallback(motivation)}</p></div>`;
             }
             if(window.MathJax) MathJax.typesetPromise();
         }
@@ -2015,8 +2078,10 @@
             document.getElementById('q-edit-topic-id').value = topicId || currentSubTopicId;
             document.getElementById('q-edit-type').value = 'multipla';
             initQuestionEditors();
-            ['statement','opt0','opt1','opt2','opt3','opt4','explanation'].forEach(key => setQuestionEditorValue(key, ''));
+            ['statement','opt0','opt1','opt2','opt3','opt4'].forEach(key => setQuestionEditorValue(key, ''));
+            initQuestionExplanationField();
             setQuestionEditorValue('explanation', '');
+            lastQuestionExplanationFocus = false;
             toggleQuestionTypeFields();
             document.getElementById('q-edit-correct').value = '0';
 
@@ -2043,7 +2108,9 @@
             setQuestionEditorValue('opt2', q.options?.[2] || '');
             setQuestionEditorValue('opt3', q.options?.[3] || '');
             setQuestionEditorValue('opt4', q.options?.[4] || '');
-            setQuestionEditorValue('explanation', q.explanation || '');
+            initQuestionExplanationField();
+            setQuestionEditorValue('explanation', getQuestionExplanation(q));
+            lastQuestionExplanationFocus = false;
             document.getElementById('q-edit-correct').value = String(normalizeCorrectIndex(q.correct, (q.type || 'multipla') === 'certo_errado' ? 2 : 5));
             toggleQuestionTypeFields();
 
@@ -2092,8 +2159,7 @@
                 statement: statement,
                 options: type === 'certo_errado' ? ['Certo','Errado'] : [opt0, opt1, opt2, opt3, opt4],
                 correct: correct,
-                explanation: explanation,
-                gabaritoComentado: explanation
+                explanation: explanation
             };
 
             if (!masterQuestions[targetTopicId]) masterQuestions[targetTopicId] = [];
@@ -2122,9 +2188,9 @@
                     // Primeiro grava a nova versão. Só depois remove a cópia antiga,
                     // evitando deixar a questão sem cópia na nuvem se houver falha.
                     await window.saveQuestionToCloud(questionData);
-                    if (!isNew && originalTopicId && originalTopicId !== targetTopicId && window.deleteQuestionFromCloud) {
-                        await window.deleteQuestionFromCloud(qId);
-                    }
+                    // A mudança de subtópico mantém o mesmo ID da questão;
+                    // o setDoc acima já atualiza o documento correto na nuvem.
+                    // NÃO excluir o mesmo qId depois de salvá-lo.
                 } catch (err) {
                     console.error('Falha ao sincronizar questão com o Firestore:', err);
                     alert('A questão foi salva neste dispositivo, mas não foi sincronizada com a nuvem. Verifique a conexão com o Firebase.');
@@ -2796,6 +2862,9 @@
     encodeURIComponent(String(id || '').trim());
 
   const nowISO = () => new Date().toISOString();
+  // IDs de questões excluídas ficam registrados na nuvem para impedir
+  // que o catálogo inicial embutido no HTML as recrie em outro dispositivo.
+  let deletedQuestionIds = new Set();
 
   /*
    * Conteúdo público é centralizado no Firestore. O HTML/localStorage é apenas
@@ -2803,7 +2872,26 @@
    * e, no próximo acesso do professor, o catálogo local deste dispositivo será
    * publicado na nuvem uma única vez. Usuários comuns nunca sobrescrevem a nuvem.
    */
-  const HTML_CONTENT_VERSION = '2026-08-31-v3';
+  const HTML_CONTENT_VERSION = '2026-08-31-v4';
+
+  /* ============================================================
+     CONTRATO DE ALTERAÇÃO CONTROLADA — NÃO MODIFICAR SEM PEDIDO
+     ============================================================
+     REGRA: em futuras alterações deste HTML, alterar SOMENTE o que
+     foi explicitamente solicitado pelo administrador. NÃO remover,
+     substituir ou reestruturar MathLab, aliases, Firebase/Firestore,
+     sincronização de desempenho aluno/professor, abas, permissões,
+     painel do professor/admin, estrutura visual ou outras funções
+     existentes, salvo pedido explícito.
+     COMANDO DE MANUTENÇÃO: "MODO PRESERVAÇÃO TOTAL — ALTERE SOMENTE
+     O QUE EU PEDIR".
+     Este bloco é um contrato técnico/documental para futuras edições.
+     PROTEÇÃO: não fazer refatoração, limpeza, otimização, reorganização,
+     atualização de bibliotecas ou correções colaterais durante uma alteração
+     solicitada. Se a solicitação for sobre UMA função/campo, tocar somente
+     nessa função/campo e preservar todo o restante byte a byte sempre que
+     tecnicamente possível.
+     ============================================================ */
 
   /* ============================================================
      ALUNOS
@@ -3107,15 +3195,27 @@
 
   window.saveQuestionToCloud = async function(questionData) {
     if (!questionData || !questionData.id) throw new Error('Questão sem ID.');
-    await setDoc(doc(db, 'questoes', safeDocId(questionData.id)), {
+    const qid = safeDocId(questionData.id);
+    await setDoc(doc(db, 'questoes', qid), {
       ...questionData,
       updatedAt: nowISO()
     }, { merge: true });
+    // Salvar explicitamente uma questão significa que ela foi criada/recriada.
+    await deleteDoc(doc(db, 'questoes_excluidas', qid));
+    deletedQuestionIds.delete(qid);
   };
 
   window.deleteQuestionFromCloud = async function(questionId) {
     if (!questionId) return;
-    await deleteDoc(doc(db, 'questoes', safeDocId(questionId)));
+    const qid = safeDocId(questionId);
+    // Primeiro registra a exclusão de forma durável; depois remove a questão.
+    // Assim, um HTML/cache antigo em outro dispositivo não pode recriá-la.
+    await setDoc(doc(db, 'questoes_excluidas', qid), {
+      questionId: String(questionId),
+      deletedAt: nowISO()
+    }, { merge: true });
+    deletedQuestionIds.add(qid);
+    await deleteDoc(doc(db, 'questoes', qid));
   };
 
   window.savePublicConfigToCloud = async function(config) {
@@ -3146,10 +3246,15 @@
     const localTopics = Array.isArray(topicsData) ? topicsData : [];
     const localQuestions = [];
     Object.entries(masterQuestions || {}).forEach(([topicId, list]) => {
-      (Array.isArray(list) ? list : []).forEach(q => localQuestions.push({
-        ...q,
-        topicId: q.topicId || topicId
-      }));
+      (Array.isArray(list) ? list : []).forEach(q => {
+        // Nunca ressuscitar, por publicação de um HTML antigo, uma questão
+        // que já possui tombstone de exclusão na nuvem.
+        if (deletedQuestionIds.has(safeDocId(q.id))) return;
+        localQuestions.push({
+          ...q,
+          topicId: q.topicId || topicId
+        });
+      });
     });
 
     const [topicSnap, questionSnap] = await Promise.all([
@@ -3189,8 +3294,14 @@
     }
 
     // ---------- QUESTÕES ----------
-    const questionSnap = await getDocs(collection(db, 'questoes'));
-    if (questionSnap.empty && typeof masterQuestions !== 'undefined' && masterQuestions) {
+    // A coleção de exclusões é uma trava contra a recriação de questões
+    // apagadas quando outro dispositivo possui o catálogo antigo embutido.
+    const [questionSnap, deletedQuestionSnap] = await Promise.all([
+      getDocs(collection(db, 'questoes')),
+      getDocs(collection(db, 'questoes_excluidas'))
+    ]);
+    deletedQuestionIds = new Set(deletedQuestionSnap.docs.map(d => d.id));
+    if (questionSnap.empty && deletedQuestionSnap.empty && typeof masterQuestions !== 'undefined' && masterQuestions) {
       for (const [topicId, list] of Object.entries(masterQuestions)) {
         for (const q of (Array.isArray(list) ? list : [])) {
           await window.saveQuestionToCloud({
@@ -3252,27 +3363,21 @@
     const grouped = {};
 
     questionDocs.forEach(d => {
-      const cloudData = d.data() || {};
-      const q = { id: d.id, ...cloudData };
+      // Questões marcadas como excluídas nunca entram no catálogo local,
+      // mesmo que algum cache/HTML antigo ainda as contenha.
+      if (deletedQuestionIds.has(d.id)) return;
+      const q = { id: d.id, ...(d.data() || {}) };
       if (!q.topicId) return;
-      if (!Object.prototype.hasOwnProperty.call(cloudData, 'explanation') && !Object.prototype.hasOwnProperty.call(cloudData, 'gabaritoComentado')) {
-        try {
-          const cached = JSON.parse(localStorage.getItem('ctrb_questions_data') || '{}');
-          const cachedQ = Object.values(cached).flat().find(x => x && x.id === q.id);
-          if (cachedQ && cachedQ.explanation !== undefined) q.explanation = cachedQ.explanation;
-        } catch (_) {}
-      }
       if (!grouped[q.topicId]) grouped[q.topicId] = [];
       grouped[q.topicId].push(q);
     });
 
-    // Se a coleção existe na nuvem, ela passa a ser a fonte oficial.
-    if (questionDocs.length > 0) {
-      if (typeof masterQuestions !== 'undefined') {
-        masterQuestions = grouped;
-      }
-      localStorage.setItem('ctrb_questions_data', JSON.stringify(grouped));
+    // O Firestore é SEMPRE a fonte oficial: inclusive snapshot vazio.
+    // Isso impede que questões antigas do localStorage/HTML reapareçam.
+    if (typeof masterQuestions !== 'undefined') {
+      masterQuestions = grouped;
     }
+    localStorage.setItem('ctrb_questions_data', JSON.stringify(grouped));
 
     if (typeof renderMainContent === 'function') renderMainContent();
   }
@@ -3297,6 +3402,7 @@
   let unsubscribeTopics = null;
   let unsubscribeQuestions = null;
   let unsubscribePublicConfig = null;
+  let unsubscribeDeletedQuestions = null;
 
   window.startPublicContentRealtime = function() {
     if (!unsubscribeTopics) {
@@ -3306,6 +3412,19 @@
           applyCloudTopics(snapshot.docs);
         },
         error => console.error('Erro no listener de módulos/teoria:', error)
+      );
+    }
+
+    if (!unsubscribeDeletedQuestions) {
+      unsubscribeDeletedQuestions = onSnapshot(
+        collection(db, 'questoes_excluidas'),
+        snapshot => {
+          deletedQuestionIds = new Set(snapshot.docs.map(d => d.id));
+          // Reaplica o catálogo oficial depois que a lista de exclusões mudar.
+          getDocs(collection(db, 'questoes')).then(qSnap => applyCloudQuestions(qSnap.docs))
+            .catch(err => console.error('Erro ao reaplicar questões após exclusões:', err));
+        },
+        error => console.error('Erro no listener de exclusões de questões:', error)
       );
     }
 
@@ -3343,6 +3462,12 @@
     // portanto, uma publicação automática poderia recriar questões excluídas.
     // A publicação de inclusões/edições/exclusões feitas diretamente no HTML
     // continua disponível exclusivamente pelo botão do Painel do Professor.
+    try {
+      const deletedSnap = await getDocs(collection(db, 'questoes_excluidas'));
+      deletedQuestionIds = new Set(deletedSnap.docs.map(d => d.id));
+    } catch (err) {
+      console.warn('Não foi possível carregar a trava de exclusões:', err);
+    }
     try { await migratePublicContentIfCloudIsEmpty(); } catch (err) { console.warn('Não foi possível inicializar o conteúdo do Firestore:', err); }
     try {
       const catRef=doc(db,'configuracoes','conteudo'); const catSnap=await getDoc(catRef); if(!catSnap.exists()) await window.saveContentCatalogToCloud(disciplinesData);
