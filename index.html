@@ -1163,13 +1163,42 @@
         /* CTRB_PRESERVACAO_TOTAL: ÚNICA área alterada nesta versão.
            Preservar MathLab, aliases, Firebase/Firestore, sincronização, desempenho aluno/professor,
            exclusões permanentes, criação/edição, abas, permissões, layout, teoria e simulados. */
+        /* CTRB_PRESERVACAO_TOTAL — ÁREA PROTEGIDA
+           O bloco abaixo trata EXCLUSIVAMENTE o editor de Gabarito Comentado/Motivação.
+           Nenhuma outra rotina do sistema deve ser modificada para corrigir este campo.
+
+           REGRA ABSOLUTA DE PRESERVAÇÃO:
+           - Não alterar MathLab, aliases, símbolos ou editores de outras áreas.
+           - Não alterar Firebase/Firestore ou qualquer sincronização.
+           - Não alterar desempenho do aluno/professor, histórico, cronograma ou alunos.
+           - Não alterar criação/edição/exclusão de questões fora deste campo.
+           - Não alterar a proteção de exclusões permanentes.
+           - Não alterar abas, permissões, layout, teoria, simulados ou catálogo.
+           - Ao editar uma questão, o conteúdo do Gabarito Comentado pertence SOMENTE
+             àquela questão. Nunca reutilizar o conteúdo da questão anterior.
+        */
         function setQuestionEditorValue(key, value) {
             initQuestionEditors();
             const editor = questionEditors[key];
             if (!editor) return;
-            const html = legacyRichHtml(value);
+
+            // Limpeza em duas camadas: Delta do Quill + DOM. Isso impede que o estado
+            // interno ou o DOM da questão anterior sobreviva ao carregamento seguinte.
             editor.setText('', 'silent');
-            if (html) editor.clipboard.dangerouslyPasteHTML(0, html, 'silent');
+            editor.root.innerHTML = '';
+            if (editor.history && editor.history.clear) editor.history.clear();
+
+            const raw = String(value ?? '');
+            if (!raw) {
+                editor.update('silent');
+                return;
+            }
+
+            // Carrega exatamente o conteúdo salvo. Para texto legado/Markdown simples,
+            // converte somente o necessário; para HTML já rico, preserva o conteúdo.
+            const html = legacyRichHtml(raw);
+            editor.clipboard.dangerouslyPasteHTML(0, html, 'silent');
+            editor.update('silent');
             if (editor.history && editor.history.clear) editor.history.clear();
         }
 
@@ -1177,6 +1206,14 @@
             initQuestionEditors();
             const editor = questionEditors[key];
             if (!editor) return '';
+
+            // Para o Gabarito Comentado, NÃO sanitizar/reinterpretar o conteúdo durante
+            // o salvamento: isso podia remover parte do texto/formatacao cadastrada.
+            // O HTML será sanitizado somente na exibição.
+            if (key === 'explanation') {
+                return String(editor.root.innerHTML || '').trim();
+            }
+
             return sanitizeTheoryHtml(normalizeSymbolAliases(editor.root.innerHTML)).trim();
         }
 
@@ -2011,7 +2048,6 @@
             document.getElementById('q-edit-type').value = 'multipla';
             initQuestionEditors();
             ['statement','opt0','opt1','opt2','opt3','opt4','explanation'].forEach(key => setQuestionEditorValue(key, ''));
-            setQuestionEditorValue('explanation', '');
             toggleQuestionTypeFields();
             document.getElementById('q-edit-correct').value = '0';
 
