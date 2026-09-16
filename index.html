@@ -2195,19 +2195,40 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             out.push(cur); return out;
         }
         function parseBatchCsv(text){
-            const raw=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n');
-            const lines=raw.split('\n').filter(line=>line.trim()!=='');
-            if(!lines.length) return {rows:[],error:'O CSV está vazio.'};
-            const first=lines[0];
-            const delimiter=(parseBatchCsvLine(first,';').length>parseBatchCsvLine(first,',').length)?';':',';
-            const headers=parseBatchCsvLine(first,delimiter).map(x=>x.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+            let raw=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
+            // Aceita CSV copiado pela IA dentro de bloco Markdown ```csv ... ```
+            raw=raw.replace(/^```(?:csv|CSV)?\s*\n?/,'').replace(/\n?```\s*$/,'').trim();
+            if(!raw) return {rows:[],error:'O CSV está vazio.'};
+
+            // Constrói os registros respeitando aspas; assim, vírgulas e quebras de
+            // linha dentro de campos entre aspas não quebram a questão.
+            const records=[]; let record='', quoted=false;
+            for(let i=0;i<raw.length;i++){
+                const ch=raw[i];
+                if(ch==='"'){
+                    if(quoted && raw[i+1]==='"'){ record+='""'; i++; }
+                    else { quoted=!quoted; record+=ch; }
+                } else if(ch==='\n' && !quoted){
+                    if(record.trim()!=='') records.push(record);
+                    record='';
+                } else record+=ch;
+            }
+            if(record.trim()!=='') records.push(record);
+            if(!records.length) return {rows:[],error:'O CSV está vazio.'};
+            if(quoted) return {rows:[],error:'CSV inválido: existe uma aspa aberta sem fechamento.'};
+
+            const first=records[0];
+            const comma=parseBatchCsvLine(first,',').length;
+            const semi=parseBatchCsvLine(first,';').length;
+            const delimiter=semi>comma?';':',';
+            const headers=parseBatchCsvLine(first,delimiter).map(x=>x.trim().replace(/^"|"$/g,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
             const aliases={enunciado:['enunciado','questao','questão','statement'],a:['a','alternativa a','opcao a','opção a'],b:['b','alternativa b','opcao b','opção b'],c:['c','alternativa c','opcao c','opção c'],d:['d','alternativa d','opcao d','opção d'],e:['e','alternativa e','opcao e','opção e'],gabarito:['gabarito','resposta correta','correta','correct']};
             const pos={}; Object.entries(aliases).forEach(([key,names])=>{ const wanted=names.map(v=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'')); pos[key]=headers.findIndex(h=>wanted.includes(h)); });
             if(pos.enunciado<0 || ['a','b','c','d','e'].some(k=>pos[k]<0)) return {rows:[],error:'Cabeçalho inválido. Use: Enunciado,A,B,C,D,E,Gabarito.'};
             if(pos.gabarito<0) return {rows:[],error:'A coluna Gabarito é obrigatória para que o site saiba qual alternativa é correta.'};
             const rows=[];
-            for(let i=1;i<lines.length;i++){
-                const cols=parseBatchCsvLine(lines[i],delimiter);
+            for(let i=1;i<records.length;i++){
+                const cols=parseBatchCsvLine(records[i],delimiter).map(v=>v.trim());
                 const row={}; Object.keys(pos).forEach(k=>row[k]=(cols[pos[k]]??'').trim());
                 if(!row.enunciado && !row.a && !row.b && !row.c && !row.d && !row.e) continue;
                 const gab=row.gabarito.toUpperCase().replace(/[^A-E]/g,'').charAt(0);
@@ -2250,6 +2271,7 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                 alert('A importação não foi concluída na nuvem. As alterações locais deste lote foram desfeitas. Verifique a conexão com o Firebase e tente novamente.');
             }
         }
+
 
         function openAddQuestionModal(topicId) {
             document.getElementById('modal-question-title').innerHTML = '<i class="fa-solid fa-plus-circle text-amber-500"></i> Adicionar Nova Questão';
