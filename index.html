@@ -441,12 +441,14 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                     <input type="text" id="edit-topic-title" required class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">ID ou URL do Vídeo/Playlist do YouTube</label>
-                    <input type="text" id="edit-topic-yt" placeholder="Ex: fA-5rX3rV44 ou https://www.youtube.com/playlist?list=PL..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Vídeos / Playlists do YouTube</label>
+                    <textarea id="edit-topic-yt" rows="3" placeholder="Cole um ID ou URL por linha. Ex.: fA-5rX3rV44 ou https://www.youtube.com/playlist?list=PL..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">Você pode cadastrar vários vídeos/playlists, colocando um por linha.</p>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Link clicável para abrir no YouTube</label>
-                    <input type="url" id="edit-topic-yt-link" placeholder="https://www.youtube.com/watch?v=... ou https://www.youtube.com/playlist?list=..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Links clicáveis para abrir no YouTube</label>
+                    <textarea id="edit-topic-yt-link" rows="3" placeholder="Um link por linha: https://www.youtube.com/watch?v=... ou https://www.youtube.com/playlist?list=..." class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <p class="text-[10px] text-slate-400 mt-1">Um link por linha. Os links podem ser vídeos ou playlists.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Material Teórico</label>
@@ -1672,7 +1674,9 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                 const disciplineTopics = topicsData.filter(t => (t.discipline || 'Matemática') === activeDiscipline);
                 if (!disciplineTopics.some(t => t.id === currentSubTopicId) && disciplineTopics.length) currentSubTopicId = disciplineTopics[0].id;
                 const activeTopic = topicsData.find(t => t.id === currentSubTopicId) || disciplineTopics[0] || topic;
-                const embedUrl = getYoutubeEmbedUrl(activeTopic?.ytVideoId || '');
+                const youtubeItems = Array.isArray(activeTopic?.youtubeItems) && activeTopic.youtubeItems.length ? activeTopic.youtubeItems : (activeTopic?.ytVideoId ? [activeTopic.ytVideoId] : []);
+                const youtubeLinks = Array.isArray(activeTopic?.youtubeLinks) && activeTopic.youtubeLinks.length ? activeTopic.youtubeLinks : (activeTopic?.youtubeLink ? [activeTopic.youtubeLink] : []);
+                const embedUrls = youtubeItems.map(getYoutubeEmbedUrl).filter(Boolean);
                 main.innerHTML = `
                     <div class="space-y-6">
                         <div class="flex flex-wrap justify-between items-start gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -1683,7 +1687,7 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                             <div><label class="text-[10px] font-bold uppercase text-slate-500">Disciplina</label><select onchange="questionBankState.discipline=this.value; questionBankState.subtopic='Todos'; localStorage.setItem('ctrb_question_bank_state',JSON.stringify(questionBankState)); renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${availableDisciplines.map(d=>`<option ${d===activeDiscipline?'selected':''}>${d}</option>`).join('')}</select></div>
                             <div><label class="text-[10px] font-bold uppercase text-slate-500">Tópico / Subtópico</label><select onchange="currentSubTopicId=this.value; renderMainContent();" class="w-full mt-1 px-3 py-2 rounded-lg border bg-white dark:bg-slate-800 text-xs font-bold">${disciplineTopics.map(t=>`<option value="${t.id}" ${t.id===currentSubTopicId?'selected':''}>${t.title}</option>`).join('')}</select></div>
                         </div>
-                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${prepareTheoryContent(activeTopic.theory || '<p>Material ainda não cadastrado.</p>')}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950">${embedUrl ? `<iframe class="w-full h-full" src="${embedUrl}" title="Vídeo do Módulo" frameborder="0" allowfullscreen></iframe>` : '<div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div>'}</div>${activeTopic?.youtubeLink?`<a href="${activeTopic.youtubeLink}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400"><i class="fa-brands fa-youtube"></i> Link do vídeo / playlist no YouTube</a>`:''}</div></div>` : ''}
+                        ${activeTopic ? `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"><div class="lg:col-span-7 space-y-4 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50"><h3 class="text-sm font-bold border-b pb-2"><i class="fa-solid fa-book-open text-amber-500"></i> Exposição Didática do Conteúdo</h3><div class="prose dark:prose-invert max-w-none text-xs leading-relaxed">${prepareTheoryContent(activeTopic.theory || '<p>Material ainda não cadastrado.</p>')}</div></div><div class="lg:col-span-5 space-y-3 sticky top-24"><h3 class="text-sm font-bold"><i class="fa-brands fa-youtube text-red-500"></i> Videoaula / Playlist</h3><div class="space-y-3">${embedUrls.length ? embedUrls.map((url,i)=>`<div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950"><iframe class="w-full h-full" src="${url}" title="Vídeo/Playlist ${i+1}" frameborder="0" allowfullscreen></iframe></div>`).join('') : '<div class="aspect-video w-full rounded-2xl overflow-hidden shadow-md border bg-slate-950"><div class="h-full flex items-center justify-center text-slate-500 text-xs">Nenhum vídeo cadastrado.</div></div>'}</div>${youtubeLinks.length ? `<div class="flex flex-col gap-2">${youtubeLinks.map((link,i)=>`<a href="${link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 dark:text-red-400"><i class="fa-brands fa-youtube"></i> Abrir vídeo / playlist ${i+1} no YouTube</a>`).join('')}</div>` : ''}</div></div>` : ''}
                     </div>`;
             }
             else if (currentMainTab === 'questoes') {
@@ -2054,7 +2058,19 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             if (!canManageContent()) return;
             const sel=document.getElementById('new-subtopic-discipline');
             sel.innerHTML=disciplinesData.map(d=>`<option value="${d}">${d}</option>`).join('');
-            document.getElementById('content-structure-list').innerHTML=disciplinesData.map(d=>{ const count=topicsData.filter(t=>(t.discipline||'Matemática')===d).length; return `<div class="flex justify-between py-1"><span>${d}</span><b>${count} subtópico(s)</b></div>`; }).join('');
+            document.getElementById('content-structure-list').innerHTML=disciplinesData.map(d=>{
+                const topicItems=topicsData.filter(t=>(t.discipline||'Matemática')===d);
+                return `<div class="py-2 border-b border-slate-200 dark:border-slate-800">
+                    <div class="flex justify-between items-center"><span class="font-bold">${d}</span><b>${topicItems.length} subtópico(s)</b></div>
+                    <div class="mt-1 space-y-1">${topicItems.map(t=>`<div class="flex items-center justify-between gap-2 pl-2">
+                        <span class="truncate">${t.title}</span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="openEditTopicModal('${t.id}')" class="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold hover:bg-slate-300 dark:hover:bg-slate-600" title="Editar subtópico"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button type="button" onclick="deleteSubtopic('${t.id}')" class="px-2 py-1 rounded bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-bold hover:bg-red-200 dark:hover:bg-red-950/60" title="Excluir subtópico"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`).join('')}</div>
+                </div>`;
+            }).join('');
             document.getElementById('content-management-modal').classList.remove('hidden');
         }
         function closeContentManagementModal(){ document.getElementById('content-management-modal').classList.add('hidden'); }
@@ -2074,6 +2090,38 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             if(window.saveQuestionToCloud){}
             document.getElementById('new-subtopic-name').value=''; currentSubTopicId=id; renderSidebarNav(); openContentManagementModal(); renderMainContent();
             alert('Subtópico criado.');
+        }
+
+        async function deleteSubtopic(topicId){
+            if(!canManageContent()) return;
+            const topic = topicsData.find(t => t.id === topicId);
+            if(!topic) return;
+            if(!confirm(`Deseja realmente excluir o subtópico "${topic.title}"? Esta ação também removerá as questões vinculadas a ele.`)) return;
+
+            const topicQuestions = Array.isArray(masterQuestions[topicId]) ? masterQuestions[topicId] : [];
+            try {
+                if(window.deleteTopicFromCloud) {
+                    await window.deleteTopicFromCloud(topicId);
+                }
+                if(window.deleteQuestionFromCloud) {
+                    for(const q of topicQuestions) await window.deleteQuestionFromCloud(q.id);
+                }
+            } catch(err) {
+                console.error('Falha ao excluir subtópico do Firestore:', err);
+                alert('Não foi possível concluir a exclusão na nuvem. Verifique a conexão com o Firebase.');
+                return;
+            }
+
+            topicsData.splice(topicsData.findIndex(t => t.id === topicId), 1);
+            delete masterQuestions[topicId];
+            localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
+            localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
+
+            if(currentSubTopicId === topicId) currentSubTopicId = topicsData[0]?.id || '';
+            renderSidebarNav();
+            openContentManagementModal();
+            renderMainContent();
+            alert('Subtópico excluído e sincronizado em tempo real.');
         }
 
         function openAddQuestionModal(topicId) {
@@ -2231,8 +2279,10 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             if (!t) return;
             document.getElementById('edit-topic-id').value = t.id;
             document.getElementById('edit-topic-title').value = t.title;
-            document.getElementById('edit-topic-yt').value = t.ytVideoId || '';
-            document.getElementById('edit-topic-yt-link').value = t.youtubeLink || (t.ytVideoId ? 'https://www.youtube.com/watch?v=' + t.ytVideoId : '');
+            const topicYt = Array.isArray(t.youtubeItems) ? t.youtubeItems : (t.ytVideoId ? [t.ytVideoId] : []);
+            const topicLinks = Array.isArray(t.youtubeLinks) ? t.youtubeLinks : (t.youtubeLink ? [t.youtubeLink] : []);
+            document.getElementById('edit-topic-yt').value = topicYt.join('\n');
+            document.getElementById('edit-topic-yt-link').value = topicLinks.join('\n');
             if (quillTopicEditor) {
                 quillTopicEditor.root.innerHTML = t.theory || '';
             }
@@ -2247,8 +2297,10 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             e.preventDefault(); if (!canManageContent()) return;
             const id = document.getElementById('edit-topic-id').value;
             const title = document.getElementById('edit-topic-title').value.trim();
-            const yt = document.getElementById('edit-topic-yt').value.trim();
-            const youtubeLink = document.getElementById('edit-topic-yt-link').value.trim();
+            const ytItems = document.getElementById('edit-topic-yt').value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
+            const youtubeLinks = document.getElementById('edit-topic-yt-link').value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean);
+            const yt = ytItems[0] || '';
+            const youtubeLink = youtubeLinks[0] || '';
             const content = quillTopicEditor ? prepareTheoryContent(quillTopicEditor.root.innerHTML) : '';
 
             const idx = topicsData.findIndex(item => item.id === id);
@@ -2257,6 +2309,8 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                 topicsData[idx].discipline = topicsData[idx].discipline || 'Matemática';
                 topicsData[idx].ytVideoId = yt;
                 topicsData[idx].youtubeLink = youtubeLink;
+                topicsData[idx].youtubeItems = ytItems;
+                topicsData[idx].youtubeLinks = youtubeLinks;
                 topicsData[idx].theory = content;
                 localStorage.setItem('ctrb_topics_data', JSON.stringify(topicsData));
                 if (window.saveTopicToCloud) {
@@ -3195,6 +3249,17 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
       id: topicId,
       updatedAt: nowISO()
     }, { merge: true });
+    await deleteDoc(doc(db, 'modulos_excluidos', safeDocId(topicId)));
+  };
+
+  window.deleteTopicFromCloud = async function(topicId) {
+    if (!topicId) return;
+    const tid = safeDocId(topicId);
+    await setDoc(doc(db, 'modulos_excluidos', tid), {
+      topicId: String(topicId),
+      deletedAt: nowISO()
+    }, { merge: true });
+    await deleteDoc(doc(db, 'modulos', tid));
   };
 
   window.saveQuestionToCloud = async function(questionData) {
@@ -3269,7 +3334,7 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     const localTopicIds = new Set(localTopics.map(t => safeDocId(t.id)));
     const localQuestionIds = new Set(localQuestions.map(q => safeDocId(q.id)));
 
-    for (const topic of localTopics) await window.saveTopicToCloud(topic.id, topic);
+    for (const topic of localTopics) if (!deletedTopicIds.has(safeDocId(topic.id))) await window.saveTopicToCloud(topic.id, topic);
     for (const q of localQuestions) await window.saveQuestionToCloud(q);
 
     for (const d of topicSnap.docs) {
@@ -3290,8 +3355,12 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     // ao acessar o site por um PC/celular novo.
 
     // ---------- MÓDULOS ----------
-    const topicSnap = await getDocs(collection(db, 'modulos'));
-    if (topicSnap.empty && Array.isArray(topicsData)) {
+    const [topicSnap, deletedTopicSnap] = await Promise.all([
+      getDocs(collection(db, 'modulos')),
+      getDocs(collection(db, 'modulos_excluidos'))
+    ]);
+    deletedTopicIds = new Set(deletedTopicSnap.docs.map(d => d.id));
+    if (topicSnap.empty && deletedTopicSnap.empty && Array.isArray(topicsData)) {
       for (const topic of topicsData) {
         await window.saveTopicToCloud(topic.id, topic);
       }
@@ -3325,12 +3394,12 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     }
   }
 
+  let deletedTopicIds = new Set();
+
   function applyCloudTopics(topicDocs) {
     const cloudTopics = topicDocs
       .map(d => ({ id: d.id, ...(d.data() || {}) }))
-      .filter(t => t.id);
-
-    if (!cloudTopics.length) return;
+      .filter(t => t.id && !deletedTopicIds.has(safeDocId(t.id)));
 
     const localById = new Map((Array.isArray(topicsData) ? topicsData : []).map(t => [t.id, t]));
     cloudTopics.forEach(t => localById.set(t.id, { ...localById.get(t.id), ...t }));
@@ -3339,10 +3408,10 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     const currentOrder = Array.isArray(topicsData) ? topicsData : [];
     const result = [];
     currentOrder.forEach(t => {
-      if (localById.has(t.id)) result.push(localById.get(t.id));
+      if (localById.has(t.id) && !deletedTopicIds.has(safeDocId(t.id))) result.push(localById.get(t.id));
     });
     cloudTopics.forEach(t => {
-      if (!currentOrder.some(x => x.id === t.id)) result.push(t);
+      if (!currentOrder.some(x => x.id === t.id) && !deletedTopicIds.has(safeDocId(t.id))) result.push(t);
     });
 
     // Atualiza o mesmo array usado pelo site, sem alterar a estrutura visual.
@@ -3407,6 +3476,7 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
   let unsubscribeQuestions = null;
   let unsubscribePublicConfig = null;
   let unsubscribeDeletedQuestions = null;
+  let unsubscribeDeletedTopics = null;
 
   window.startPublicContentRealtime = function() {
     if (!unsubscribeTopics) {
@@ -3416,6 +3486,18 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
           applyCloudTopics(snapshot.docs);
         },
         error => console.error('Erro no listener de módulos/teoria:', error)
+      );
+    }
+
+    if (!unsubscribeDeletedTopics) {
+      unsubscribeDeletedTopics = onSnapshot(
+        collection(db, 'modulos_excluidos'),
+        snapshot => {
+          deletedTopicIds = new Set(snapshot.docs.map(d => d.id));
+          getDocs(collection(db, 'modulos')).then(topicSnap => applyCloudTopics(topicSnap.docs))
+            .catch(err => console.error('Erro ao reaplicar módulos após exclusões:', err));
+        },
+        error => console.error('Erro no listener de exclusões de módulos:', error)
       );
     }
 
