@@ -2218,17 +2218,29 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             if(quoted) return {rows:[],error:'CSV inválido: existe uma aspa aberta sem fechamento.'};
 
             const first=records[0];
-            const comma=parseBatchCsvLine(first,',').length;
-            const semi=parseBatchCsvLine(first,';').length;
+            // Compatibilidade com arquivos gerados por algumas IAs que colocam
+            // a linha inteira entre aspas: "Enunciado;A;B;C;D;E;Gabarito".
+            const firstTrim=first.trim();
+            const wholeRowQuoted=firstTrim.length>=2 && firstTrim[0]==='"' && firstTrim[firstTrim.length-1]==='"';
+            const firstForDelimiter=wholeRowQuoted ? firstTrim.slice(1,-1).replace(/""/g,'"') : first;
+            const comma=parseBatchCsvLine(firstForDelimiter,',').length;
+            const semi=parseBatchCsvLine(firstForDelimiter,';').length;
             const delimiter=semi>comma?';':',';
-            const headers=parseBatchCsvLine(first,delimiter).map(x=>x.trim().replace(/^"|"$/g,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+            const normalizeCsvRecord=(record)=>{
+                const t=record.trim();
+                if(wholeRowQuoted && t.length>=2 && t[0]==='"' && t[t.length-1]==='"'){
+                    return t.slice(1,-1).replace(/""/g,'"');
+                }
+                return record;
+            };
+            const headers=parseBatchCsvLine(normalizeCsvRecord(first),delimiter).map(x=>x.trim().replace(/^"|"$/g,'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
             const aliases={enunciado:['enunciado','questao','questão','statement'],a:['a','alternativa a','opcao a','opção a'],b:['b','alternativa b','opcao b','opção b'],c:['c','alternativa c','opcao c','opção c'],d:['d','alternativa d','opcao d','opção d'],e:['e','alternativa e','opcao e','opção e'],gabarito:['gabarito','resposta correta','correta','correct']};
             const pos={}; Object.entries(aliases).forEach(([key,names])=>{ const wanted=names.map(v=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'')); pos[key]=headers.findIndex(h=>wanted.includes(h)); });
             if(pos.enunciado<0 || ['a','b','c','d','e'].some(k=>pos[k]<0)) return {rows:[],error:'Cabeçalho inválido. Use: Enunciado,A,B,C,D,E,Gabarito.'};
             if(pos.gabarito<0) return {rows:[],error:'A coluna Gabarito é obrigatória para que o site saiba qual alternativa é correta.'};
             const rows=[];
             for(let i=1;i<records.length;i++){
-                const cols=parseBatchCsvLine(records[i],delimiter).map(v=>v.trim());
+                const cols=parseBatchCsvLine(normalizeCsvRecord(records[i]),delimiter).map(v=>v.trim());
                 const row={}; Object.keys(pos).forEach(k=>row[k]=(cols[pos[k]]??'').trim());
                 if(!row.enunciado && !row.a && !row.b && !row.c && !row.d && !row.e) continue;
                 const gab=row.gabarito.toUpperCase().replace(/[^A-E]/g,'').charAt(0);
