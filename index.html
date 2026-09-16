@@ -2099,6 +2099,22 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             if(!confirm(`Deseja realmente excluir o subtópico "${topic.title}"? Esta ação também removerá as questões vinculadas a ele.`)) return;
 
             const topicQuestions = Array.isArray(masterQuestions[topicId]) ? masterQuestions[topicId] : [];
+            const topicIndex = topicsData.findIndex(t => t.id === topicId);
+            const topicSnapshot = topicIndex >= 0 ? topicsData[topicIndex] : topic;
+
+            // Marca a exclusão localmente ANTES das operações assíncronas do Firestore.
+            // Isso evita que um snapshot intermediário de "modulos" recrie o subtópico
+            // apagado antes de o tombstone de "modulos_excluidos" ser recebido.
+            deletedTopicIds.add(safeDocId(topicId));
+            if (topicIndex >= 0) topicsData.splice(topicIndex, 1);
+            delete masterQuestions[topicId];
+            localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
+            localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
+            if(currentSubTopicId === topicId) currentSubTopicId = topicsData[0]?.id || '';
+            renderSidebarNav();
+            openContentManagementModal();
+            renderMainContent();
+
             try {
                 if(window.deleteTopicFromCloud) {
                     await window.deleteTopicFromCloud(topicId);
@@ -2108,19 +2124,19 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                 }
             } catch(err) {
                 console.error('Falha ao excluir subtópico do Firestore:', err);
+                deletedTopicIds.delete(safeDocId(topicId));
+                if(topicIndex >= 0) topicsData.splice(topicIndex, 0, topicSnapshot);
+                masterQuestions[topicId] = topicQuestions;
+                localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
+                localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
+                currentSubTopicId = topicId;
+                renderSidebarNav();
+                openContentManagementModal();
+                renderMainContent();
                 alert('Não foi possível concluir a exclusão na nuvem. Verifique a conexão com o Firebase.');
                 return;
             }
 
-            topicsData.splice(topicsData.findIndex(t => t.id === topicId), 1);
-            delete masterQuestions[topicId];
-            localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
-            localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
-
-            if(currentSubTopicId === topicId) currentSubTopicId = topicsData[0]?.id || '';
-            renderSidebarNav();
-            openContentManagementModal();
-            renderMainContent();
             alert('Subtópico excluído e sincronizado em tempo real.');
         }
 
