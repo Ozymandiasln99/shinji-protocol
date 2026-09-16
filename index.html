@@ -653,6 +653,43 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     </div>
 
     <!-- MODAL DE GESTÃO DE DISCIPLINAS/SUBTÓPICOS -->
+    <div id="batch-question-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 relative">
+            <button onclick="closeBatchQuestionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-file-import text-amber-500"></i> Importar Questões em Lote</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Importe várias questões novas para um subtópico ou distribua entre os subtópicos de uma disciplina.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold block mb-1">Destino</label>
+                    <select id="batch-question-target-mode" onchange="updateBatchQuestionTargetUI()" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs">
+                        <option value="topic">Subtópico específico</option>
+                        <option value="discipline">Disciplina — distribuir entre os subtópicos</option>
+                    </select>
+                </div>
+                <div id="batch-question-topic-wrap">
+                    <label class="text-xs font-bold block mb-1">Subtópico</label>
+                    <select id="batch-question-topic" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs"></select>
+                </div>
+                <div id="batch-question-discipline-wrap" class="hidden">
+                    <label class="text-xs font-bold block mb-1">Disciplina</label>
+                    <select id="batch-question-discipline" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs"></select>
+                </div>
+                <div>
+                    <label class="text-xs font-bold block mb-1">Arquivo CSV ou TXT</label>
+                    <input id="batch-question-file" type="file" accept=".csv,.txt,text/csv,text/plain" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs">
+                    <p class="text-[10px] text-slate-500 mt-2">CSV: Enunciado, A, B, C, D, E, Gabarito. TXT também é aceito e pode usar Enunciado:, A), B), C), D), E) e Gabarito:.</p>
+                </div>
+                <div class="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-3 text-[10px] text-slate-600 dark:text-slate-300">
+                    O importador tenta preservar textos completos mesmo quando houver vírgulas, ponto e vírgula, quebras de linha ou pequenas inconsistências de formatação no arquivo.
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeBatchQuestionModal()" class="px-4 py-2 rounded-lg border text-xs font-bold">Cancelar</button>
+                    <button type="button" onclick="importBatchQuestions()" class="bg-amber-500 text-slate-950 px-4 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-file-arrow-up"></i> Importar questões</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="content-management-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-slate-200 dark:border-slate-800 relative">
             <button onclick="closeContentManagementModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
@@ -669,46 +706,6 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                     <div class="flex gap-2"><input id="new-subtopic-name" required placeholder="Ex.: Regra de Três" class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs"><button class="bg-slate-900 text-amber-400 px-3 py-2 rounded-lg text-xs font-bold">Criar subtópico</button></div>
                 </form>
                 <div class="text-[11px] text-slate-500" id="content-structure-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL IMPORTAÇÃO EM LOTE DE QUESTÕES -->
-    <div id="batch-question-modal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-3xl w-full p-6 border border-slate-200 dark:border-slate-800 relative max-h-[92vh] flex flex-col">
-            <button type="button" onclick="closeBatchQuestionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i class="fa-solid fa-xmark text-xl"></i></button>
-            <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1 flex items-center gap-2"><i class="fa-solid fa-file-csv text-amber-500"></i> Importar Questões em Lote</h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Envie várias questões de uma vez. Cada linha válida gera uma nova questão e não altera as questões existentes.</p>
-            <div class="space-y-4 overflow-y-auto custom-scroll pr-2">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Destino</label>
-                        <select id="batch-question-target-mode" onchange="updateBatchQuestionTargetUI()" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold">
-                            <option value="topic">Subtópico específico</option>
-                            <option value="discipline">Disciplina (distribuir entre os subtópicos)</option>
-                        </select>
-                    </div>
-                    <div id="batch-question-topic-wrap">
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Subtópico</label>
-                        <select id="batch-question-topic" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold"></select>
-                    </div>
-                    <div id="batch-question-discipline-wrap" class="hidden">
-                        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Disciplina</label>
-                        <select id="batch-question-discipline" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-bold"></select>
-                    </div>
-                </div>
-                <div class="p-3 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/20 text-[11px] text-slate-600 dark:text-slate-300">
-                    <b>Estrutura:</b> <code>Enunciado,A,B,C,D,E,Gabarito</code>. O gabarito deve ser <code>A</code>, <code>B</code>, <code>C</code>, <code>D</code> ou <code>E</code>. Aceita CSV ou TXT. No CSV, aceita vírgula ou ponto e vírgula, inclusive textos com separadores; no TXT, aceita questões organizadas por blocos com A), B), C), D), E) e Gabarito.
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">Arquivo CSV ou TXT</label>
-                    <input type="file" id="batch-question-file" accept=".csv,.txt,text/csv,text/plain" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs">
-                </div>
-                <div id="batch-question-preview" class="hidden border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs"></div>
-                <div class="pt-1 flex justify-end gap-2">
-                    <button type="button" onclick="closeBatchQuestionModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300">Cancelar</button>
-                    <button type="button" onclick="importBatchQuestions()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs transition shadow"><i class="fa-solid fa-file-import"></i> Importar Questões</button>
-                </div>
             </div>
         </div>
     </div>
@@ -1798,7 +1795,7 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
         function renderModerationView(main){
             if(!isAdmin()){ main.innerHTML='<div class="text-xs text-red-500 font-bold">Acesso exclusivo do administrador.</div>'; return; }
             const students=registeredStudents||[]; const mods=students.filter(s=>s.role==='moderador');
-            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b pb-4"><div><span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Área exclusiva</span><h2 class="text-2xl font-black mt-1">Moderação</h2><p class="text-xs text-slate-500">Controle de permissões, usuários, desempenho, simulados e estrutura do banco.</p></div><div class="flex flex-wrap gap-2"><button onclick="openContentManagementModal()" class="bg-amber-500 text-slate-950 px-3 py-2 rounded-lg text-xs font-bold">Gerenciar Disciplinas/Subtópicos</button><button onclick="openBatchQuestionModal()" class="bg-slate-900 text-amber-400 px-3 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-file-csv"></i> Importar Questões em Lote</button></div></div>
+            main.innerHTML=`<div class="space-y-6"><div class="flex flex-wrap justify-between items-center border-b pb-4"><div><span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Área exclusiva</span><h2 class="text-2xl font-black mt-1">Moderação</h2><p class="text-xs text-slate-500">Controle de permissões, usuários, desempenho, simulados e estrutura do banco.</p></div><div class="flex flex-wrap gap-2 justify-end"><button onclick="openBatchQuestionModal()" class="bg-slate-900 text-amber-400 px-3 py-2 rounded-lg text-xs font-bold"><i class="fa-solid fa-file-import"></i> Importar Questões em Lote</button><button onclick="openContentManagementModal()" class="bg-amber-500 text-slate-950 px-3 py-2 rounded-lg text-xs font-bold">Gerenciar Disciplinas/Subtópicos</button></div></div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="p-4 rounded-2xl border"><div class="text-[10px] uppercase font-bold text-slate-400">Usuários</div><div class="text-2xl font-black">${students.length}</div></div><div class="p-4 rounded-2xl border"><div class="text-[10px] uppercase font-bold text-slate-400">Moderadores</div><div class="text-2xl font-black text-sky-500">${mods.length}</div></div><div class="p-4 rounded-2xl border"><div class="text-[10px] uppercase font-bold text-slate-400">Simulados salvos</div><div class="text-2xl font-black text-amber-500">${generatedSimulados.length}</div></div></div>
             <div class="border rounded-2xl p-5"><h3 class="font-bold text-sm mb-3"><i class="fa-solid fa-users-gear text-rose-500"></i> Usuários e permissões</h3><div class="space-y-2">${students.map(s=>`<div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"><div><b class="text-xs">${s.name}</b><div class="text-[10px] text-slate-400">${s.email}</div></div><div class="flex gap-2 items-center"><span class="text-[10px] font-bold uppercase">${s.role||'aluno'}</span>${s.role==='moderador'?`<button onclick="setUserRole('${s.email}','aluno')" class="px-2 py-1 border rounded text-[10px]">Revogar moderador</button>`:`<button onclick="setUserRole('${s.email}','moderador')" class="px-2 py-1 bg-sky-500 text-white rounded text-[10px] font-bold">Tornar moderador</button>`}<button onclick="clearStudentPerformance('${s.name}')" class="px-2 py-1 border rounded text-[10px] text-red-500">Limpar desempenho</button><button onclick="deleteManagedStudent('${s.email}')" class="px-2 py-1 border rounded text-[10px] text-red-500">Excluir usuário</button></div></div>`).join('')||'<p class="text-xs text-slate-400">Nenhum usuário cadastrado.</p>'}</div></div>
             <div class="border rounded-2xl p-5"><div class="flex justify-between items-center mb-3"><h3 class="font-bold text-sm"><i class="fa-solid fa-file-pen text-amber-500"></i> Simulados gerados</h3><button onclick="openSimuladoModal()" class="bg-slate-900 text-amber-400 px-3 py-1.5 rounded-lg text-xs font-bold">Novo caderno</button></div><div class="space-y-2">${generatedSimulados.map(s=>`<div class="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50"><div><b class="text-xs">${s.title}</b><div class="text-[10px] text-slate-400">${s.questions?.length||0} questões • ${s.source==='ineditas'?'inéditas':'banco'}</div></div><button onclick="deleteGeneratedSimulado('${s.id}')" class="text-red-500 text-xs"><i class="fa-solid fa-trash"></i> Excluir</button></div>`).join('')||'<p class="text-xs text-slate-400">Nenhum caderno salvo.</p>'}</div></div></div>`;
@@ -2139,6 +2136,22 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             if(!confirm(`Deseja realmente excluir o subtópico "${topic.title}"? Esta ação também removerá as questões vinculadas a ele.`)) return;
 
             const topicQuestions = Array.isArray(masterQuestions[topicId]) ? masterQuestions[topicId] : [];
+            const topicIndex = topicsData.findIndex(t => t.id === topicId);
+            const topicSnapshot = topicIndex >= 0 ? topicsData[topicIndex] : topic;
+
+            // Marca a exclusão localmente ANTES das operações assíncronas do Firestore.
+            // Isso evita que um snapshot intermediário de "modulos" recrie o subtópico
+            // apagado antes de o tombstone de "modulos_excluidos" ser recebido.
+            deletedTopicIds.add(safeDocId(topicId));
+            if (topicIndex >= 0) topicsData.splice(topicIndex, 1);
+            delete masterQuestions[topicId];
+            localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
+            localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
+            if(currentSubTopicId === topicId) currentSubTopicId = topicsData[0]?.id || '';
+            renderSidebarNav();
+            openContentManagementModal();
+            renderMainContent();
+
             try {
                 if(window.deleteTopicFromCloud) {
                     await window.deleteTopicFromCloud(topicId);
@@ -2148,21 +2161,22 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
                 }
             } catch(err) {
                 console.error('Falha ao excluir subtópico do Firestore:', err);
+                deletedTopicIds.delete(safeDocId(topicId));
+                if(topicIndex >= 0) topicsData.splice(topicIndex, 0, topicSnapshot);
+                masterQuestions[topicId] = topicQuestions;
+                localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
+                localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
+                currentSubTopicId = topicId;
+                renderSidebarNav();
+                openContentManagementModal();
+                renderMainContent();
                 alert('Não foi possível concluir a exclusão na nuvem. Verifique a conexão com o Firebase.');
                 return;
             }
 
-            topicsData.splice(topicsData.findIndex(t => t.id === topicId), 1);
-            delete masterQuestions[topicId];
-            localStorage.setItem('ctrb_topics_data',JSON.stringify(topicsData));
-            localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
-
-            if(currentSubTopicId === topicId) currentSubTopicId = topicsData[0]?.id || '';
-            renderSidebarNav();
-            openContentManagementModal();
-            renderMainContent();
             alert('Subtópico excluído e sincronizado em tempo real.');
         }
+
 
         function openBatchQuestionModal(){
             if(!canManageContent()) return;
@@ -2172,7 +2186,6 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             discSel.innerHTML=disciplinesData.map(d=>`<option value="${d}">${d}</option>`).join('');
             document.getElementById('batch-question-file').value='';
             document.getElementById('batch-question-target-mode').value='topic';
-            const preview=document.getElementById('batch-question-preview'); preview.classList.add('hidden'); preview.innerHTML='';
             updateBatchQuestionTargetUI();
             document.getElementById('batch-question-modal').classList.remove('hidden');
         }
@@ -2182,211 +2195,126 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
             document.getElementById('batch-question-topic-wrap').classList.toggle('hidden',mode!=='topic');
             document.getElementById('batch-question-discipline-wrap').classList.toggle('hidden',mode!=='discipline');
         }
-        function parseBatchCsvLine(line, delimiter){
-            const out=[]; let cur='', quoted=false;
-            for(let i=0;i<line.length;i++){
-                const ch=line[i];
-                if(ch==='"'){
-                    if(quoted && line[i+1]==='"'){ cur+='"'; i++; }
-                    else quoted=!quoted;
-                } else if(ch===delimiter && !quoted){ out.push(cur); cur=''; }
-                else cur+=ch;
-            }
-            out.push(cur); return out;
+        function normalizeBatchText(v){
+            return String(v??'').replace(/\uFEFF/g,'').replace(/\r\n?/g,'\n').split('\n')
+                .map(x=>x.trim()).filter(Boolean).join(' ').replace(/\s{2,}/g,' ').trim();
         }
-        function cleanBatchImportedText(text){
-            let raw=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
-            raw=raw.replace(/^```(?:csv|txt|text|CSV|TXT)?\s*\n?/,'').replace(/\n?```\s*$/,'').trim();
-            return raw;
-        }
-
-        function normalizeBatchHeader(value){
-            return String(value||'').trim().replace(/^"|"$/g,'').trim().toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        }
-
-        function parseBatchCsvLine(line, delimiter){
-            const out=[]; let cur='', quoted=false;
-            for(let i=0;i<line.length;i++){
-                const ch=line[i];
-                if(ch==='"'){
-                    if(quoted && line[i+1]==='"'){ cur+='"'; i++; }
-                    else quoted=!quoted;
-                } else if(ch===delimiter && !quoted){ out.push(cur); cur=''; }
-                else cur+=ch;
-            }
-            out.push(cur); return out;
-        }
-
-        function splitBatchCsvRecords(raw){
-            const records=[]; let record='', quoted=false;
+        function parseBatchCsvRecords(text){
+            const raw=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').replace(/```(?:csv|txt)?/gi,'').replace(/```/g,'');
+            const records=[]; let cur='', quoted=false;
             for(let i=0;i<raw.length;i++){
                 const ch=raw[i];
                 if(ch==='"'){
-                    if(quoted && raw[i+1]==='"'){ record+='""'; i++; }
-                    else { quoted=!quoted; record+=ch; }
+                    if(quoted && raw[i+1]==='"'){ cur+='"'; i++; }
+                    else quoted=!quoted;
                 } else if(ch==='\n' && !quoted){
-                    if(record.trim()!=='') records.push(record);
-                    record='';
-                } else record+=ch;
+                    if(cur.trim()) records.push(cur); cur='';
+                } else cur+=ch;
             }
-            if(record.trim()!=='') records.push(record);
-            return {records, quoted};
+            if(cur.trim()) records.push(cur);
+            return records;
         }
-
+        function parseBatchCsvLine(line, delimiter){
+            const out=[]; let cur='', quoted=false;
+            for(let i=0;i<line.length;i++){
+                const ch=line[i];
+                if(ch==='"'){
+                    if(quoted && line[i+1]==='"'){ cur+='"'; i++; }
+                    else quoted=!quoted;
+                } else if(ch===delimiter && !quoted){ out.push(cur); cur=''; }
+                else cur+=ch;
+            }
+            out.push(cur); return out;
+        }
         function parseBatchCsv(text){
-            const raw=cleanBatchImportedText(text);
-            if(!raw) return {rows:[],error:'O arquivo está vazio.'};
-
-            const built=splitBatchCsvRecords(raw);
-            if(built.quoted) return {rows:[],error:'Arquivo inválido: existe uma aspa aberta sem fechamento.'};
-            const records=built.records;
-            if(!records.length) return {rows:[],error:'Nenhuma linha foi encontrada.'};
-
-            const firstTrim=records[0].trim();
-            const wholeRowQuoted=firstTrim.length>=2 && firstTrim[0]==='"' && firstTrim[firstTrim.length-1]==='"';
-            const unwrap=(record)=>{
-                const t=record.trim();
-                return (wholeRowQuoted && t.length>=2 && t[0]==='"' && t[t.length-1]==='"')
-                    ? t.slice(1,-1).replace(/""/g,'"') : record;
-            };
-
-            const firstForDelimiter=unwrap(records[0]);
-            const comma=parseBatchCsvLine(firstForDelimiter,',').length;
-            const semi=parseBatchCsvLine(firstForDelimiter,';').length;
-            const delimiter=semi>=comma?';':',';
-
-            const headers=parseBatchCsvLine(firstForDelimiter,delimiter).map(normalizeBatchHeader);
-            const aliases={
-                enunciado:['enunciado','questao','statement','pergunta'],
-                a:['a','alternativa a','opcao a','alternativa 1','opcao 1'],
-                b:['b','alternativa b','opcao b','alternativa 2','opcao 2'],
-                c:['c','alternativa c','opcao c','alternativa 3','opcao 3'],
-                d:['d','alternativa d','opcao d','alternativa 4','opcao 4'],
-                e:['e','alternativa e','opcao e','alternativa 5','opcao 5'],
-                gabarito:['gabarito','resposta correta','resposta','correta','correct','answer']
-            };
-            const pos={};
-            Object.entries(aliases).forEach(([key,names])=>{
-                const wanted=names.map(normalizeBatchHeader);
+            const records=parseBatchCsvRecords(text);
+            if(!records.length) return {rows:[],error:'O arquivo está vazio.'};
+            const first=records[0].trim();
+            const semi=parseBatchCsvLine(first,';').length;
+            const comma=parseBatchCsvLine(first,',').length;
+            const delimiter=semi>comma?';':',';
+            let headers=parseBatchCsvLine(first,delimiter).map(x=>normalizeBatchText(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+            const aliases={enunciado:['enunciado','questao','questão','statement'],a:['a','alternativa a','opcao a','opção a'],b:['b','alternativa b','opcao b','opção b'],c:['c','alternativa c','opcao c','opção c'],d:['d','alternativa d','opcao d','opção d'],e:['e','alternativa e','opcao e','opção e'],gabarito:['gabarito','resposta correta','correta','correct']};
+            const pos={}; Object.entries(aliases).forEach(([key,names])=>{
+                const wanted=names.map(v=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,''));
                 pos[key]=headers.findIndex(h=>wanted.includes(h));
             });
-            if(pos.enunciado<0 || ['a','b','c','d','e'].some(k=>pos[k]<0))
-                return {rows:[],error:'Cabeçalho inválido. Use: Enunciado;A;B;C;D;E;Gabarito (ou separado por vírgulas).'};
-            if(pos.gabarito<0)
-                return {rows:[],error:'A coluna Gabarito é obrigatória para que o site saiba qual alternativa é correta.'};
-
+            if(pos.enunciado<0 || ['a','b','c','d','e'].some(k=>pos[k]<0) || pos.gabarito<0){
+                return {rows:[],error:'Cabeçalho inválido. Use: Enunciado,A,B,C,D,E,Gabarito.'};
+            }
             const rows=[];
             for(let i=1;i<records.length;i++){
-                let cols=parseBatchCsvLine(unwrap(records[i]),delimiter).map(v=>v.trim());
-                if(cols.every(v=>!v)) continue;
-
-                // Muitas IAs esquecem de proteger com aspas os ";" que fazem
-                // parte do enunciado. Quando há colunas a mais, preservamos
-                // esses fragmentos no enunciado em vez de rejeitar a linha.
-                if(cols.length>headers.length && pos.enunciado===0 && pos.gabarito===headers.length-1){
-                    const extra=cols.length-headers.length;
-                    cols=[cols.slice(0,1+extra).join(delimiter),...cols.slice(1+extra)];
+                let cols=parseBatchCsvLine(records[i],delimiter);
+                // Tolerância: se houver mais de 7 campos, presume que o excesso
+                // veio do enunciado (ex.: "x = 1; y = 2; z = √2").
+                if(cols.length>7){
+                    const extras=cols.length-7;
+                    cols=[cols.slice(0,1+extras).join(delimiter),...cols.slice(1+extras)];
                 }
-
                 const row={};
-                Object.keys(pos).forEach(k=>row[k]=(cols[pos[k]]??'').trim());
+                Object.keys(pos).forEach(k=>row[k]=normalizeBatchText(cols[pos[k]]??''));
                 if(!row.enunciado && !row.a && !row.b && !row.c && !row.d && !row.e) continue;
-
-                const gabMatch=String(row.gabarito||'').toUpperCase().match(/[A-E]/);
-                const gab=gabMatch?gabMatch[0]:'';
-                if(!row.enunciado || [row.a,row.b,row.c,row.d,row.e].some(v=>!v) || !gab)
-                    return {rows:[],error:`Linha ${i+1}: não foi possível organizar o enunciado, as cinco alternativas e o gabarito. Verifique se existe uma linha completa para cada questão.`};
+                const gab=(row.gabarito.toUpperCase().match(/[A-E]/)||[])[0]||'';
+                if(!row.enunciado || [row.a,row.b,row.c,row.d,row.e].some(v=>!v) || !gab){
+                    return {rows:[],error:`Linha ${i+1}: não foi possível identificar enunciado, cinco alternativas e gabarito A-E.`};
+                }
                 rows.push({...row,correct:['A','B','C','D','E'].indexOf(gab)});
             }
-            if(!rows.length) return {rows:[],error:'Nenhuma questão válida foi encontrada.'};
-            return {rows};
+            return rows.length?{rows}:{rows:[],error:'Nenhuma questão válida foi encontrada.'};
         }
-
         function parseBatchTxt(text){
-            const raw=cleanBatchImportedText(text);
-            if(!raw) return {rows:[],error:'O arquivo TXT está vazio.'};
-
-            // TXT flexível: aceita blocos com Questão/Enunciado, A-E e Gabarito.
-            // Também aceita "A)" / "A." / "A -" e linhas sem marcador.
-            const lines=raw.split('\n').map(x=>x.trim()).filter(Boolean);
-            const rows=[]; let current=null; let currentField='enunciado';
-
-            const pushCurrent=()=>{
-                if(!current) return;
-                ['enunciado','a','b','c','d','e','gabarito'].forEach(k=>current[k]=(current[k]||'').trim());
-                if(current.enunciado && current.a && current.b && current.c && current.d && current.e && current.gabarito){
-                    const m=current.gabarito.toUpperCase().match(/[A-E]/);
-                    if(m) rows.push({...current,correct:['A','B','C','D','E'].indexOf(m[0])});
-                }
-                current=null; currentField='enunciado';
+            const clean=String(text||'').replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').replace(/```(?:csv|txt)?/gi,'').replace(/```/g,'').trim();
+            const lines=clean.split('\n'); const rows=[]; let q=null, field='';
+            const finish=()=>{
+                if(!q) return;
+                Object.keys(q).forEach(k=>q[k]=normalizeBatchText(q[k]));
+                q.gabarito=(q.gabarito.toUpperCase().match(/[A-E]/)||[])[0]||'';
+                if(q.enunciado&&q.A&&q.B&&q.C&&q.D&&q.E&&q.gabarito) rows.push({...q,correct:['A','B','C','D','E'].indexOf(q.gabarito)});
+                q=null; field='';
             };
-
-            for(const line of lines){
-                const noNumber=line.replace(/^(?:quest(?:ão|ao)|q)\s*\d+\s*[:.)-]?\s*/i,'').trim();
-                if(/^(?:quest(?:ão|ao)|q)\s*\d+\s*[:.)-]?$/i.test(line)){
-                    pushCurrent(); current={enunciado:'',a:'',b:'',c:'',d:'',e:'',gabarito:''}; continue;
-                }
-                const label=line.match(/^([A-E])\s*[\)\].:-]\s*(.*)$/i);
-                const gab=line.match(/^(?:gabarito|resposta(?:\s+correta)?)\s*[:=-]\s*(.*)$/i);
-                const en=line.match(/^(?:enunciado|quest(?:ão|ao)|pergunta)\s*[:=-]\s*(.*)$/i);
-
-                if(gab){
-                    if(!current) current={enunciado:'',a:'',b:'',c:'',d:'',e:'',gabarito:''};
-                    current.gabarito=gab[1].trim(); currentField='gabarito'; continue;
-                }
-                if(en){
-                    if(!current) current={enunciado:'',a:'',b:'',c:'',d:'',e:'',gabarito:''};
-                    current.enunciado=en[1].trim(); currentField='enunciado'; continue;
-                }
-                if(label){
-                    if(!current) current={enunciado:'',a:'',b:'',c:'',d:'',e:'',gabarito:''};
-                    current[label[1].toLowerCase()]=label[2].trim();
-                    currentField=label[1].toLowerCase(); continue;
-                }
-                if(!current) current={enunciado:'',a:'',b:'',c:'',d:'',e:'',gabarito:''};
-                if(currentField==='gabarito' && /^[A-E]$/i.test(line)) current.gabarito=line;
-                else current[currentField]=(current[currentField]?current[currentField]+' ':'')+line;
+            const start=()=>{if(q) finish(); q={enunciado:'',A:'',B:'',C:'',D:'',E:'',gabarito:''};};
+            for(const raw of lines){
+                const line=raw.trim(); if(!line) continue;
+                let m=line.match(/^(?:quest[aã]o\s*)?(\d+)[\s:.)-]+(.*)$/i);
+                if(m && !/^[A-E][\s:.)-]/i.test(line)){ start(); q.enunciado=m[2]; field='enunciado'; continue; }
+                m=line.match(/^(enunciado|quest[aã]o)\s*:\s*(.*)$/i);
+                if(m){ if(!q) start(); q.enunciado=m[2]; field='enunciado'; continue; }
+                m=line.match(/^([A-E])\s*(?:\)|\.|:|-)\s*(.*)$/i);
+                if(m){ if(!q) start(); field=m[1].toUpperCase(); q[field]=m[2]; continue; }
+                m=line.match(/^(?:gabarito|resposta\s*correta)\s*:\s*(.*)$/i);
+                if(m){ if(!q) start(); q.gabarito=m[1]; field='gabarito'; continue; }
+                if(!q) start(); if(!field) field='enunciado'; q[field]+=(q[field]?' ':'')+line;
             }
-            pushCurrent();
-
-            // Fallback para TXT tabular: uma questão por linha usando ; ou tab.
-            if(!rows.length){
-                const tabular=lines.filter(l=>l.includes(';')||l.includes('\t')).join('\n');
-                if(tabular) return parseBatchCsv(tabular);
-            }
-            if(!rows.length) return {rows:[],error:'Não encontrei questões completas no TXT. Use Enunciado, A), B), C), D), E) e Gabarito: C.'};
-            return {rows};
+            finish();
+            return rows.length?{rows}:{rows:[],error:'Nenhuma questão válida foi encontrada no TXT.'};
         }
-
         async function importBatchQuestions(){
             if(!canManageContent()) return;
             const file=document.getElementById('batch-question-file').files?.[0];
             if(!file){ alert('Selecione um arquivo CSV ou TXT.'); return; }
             let parsed;
-            try {
-                const content=await file.text();
-                const isTxt=/\.txt$/i.test(file.name) || /^text\/plain$/i.test(file.type);
-                parsed=isTxt?parseBatchTxt(content):parseBatchCsv(content);
-            } catch(err){ console.error(err); alert('Não foi possível ler o arquivo.'); return; }
+            try{
+                const text=await file.text();
+                parsed=/\.txt$/i.test(file.name)||/text\/plain/i.test(file.type)?parseBatchTxt(text):parseBatchCsv(text);
+            }catch(err){ console.error(err); alert('Não foi possível ler o arquivo.'); return; }
             if(parsed.error){ alert(parsed.error); return; }
             const mode=document.getElementById('batch-question-target-mode').value;
             const topicId=document.getElementById('batch-question-topic').value;
             const discipline=document.getElementById('batch-question-discipline').value;
-            let targets=mode==='topic'?(topicId?[topicId]:[]):topicsData.filter(t=>(t.discipline||'Matemática')===discipline).map(t=>t.id);
+            const targets=mode==='topic'?(topicId?[topicId]:[]):topicsData.filter(t=>(t.discipline||'Matemática')===discipline).map(t=>t.id);
             if(!targets.length){ alert('Não há subtópicos disponíveis para o destino selecionado.'); return; }
+            const stamp=Date.now();
             const questions=parsed.rows.map((row,i)=>{
-                const targetId=targets[i%targets.length];
-                const topic=topicsData.find(t=>t.id===targetId)||{};
-                return {id:`${targetId}_batch_${Date.now()}_${i}_${Math.random().toString(36).slice(2,8)}`,topicId:targetId,discipline:topic.discipline||discipline||'Matemática',type:'multipla',difficulty:'Média',statement:row.enunciado,options:[row.a,row.b,row.c,row.d,row.e],correct:row.correct,explanation:''};
+                const targetId=targets[i%targets.length], topic=topicsData.find(t=>t.id===targetId)||{};
+                return {id:`${targetId}_batch_${stamp}_${i}_${Math.random().toString(36).slice(2,8)}`,topicId:targetId,discipline:topic.discipline||discipline||'Matemática',type:'multipla',difficulty:'Média',statement:row.enunciado,options:[row.a,row.b,row.c,row.d,row.e],correct:row.correct,explanation:''};
             });
             if(!confirm(`Serão importadas ${questions.length} questão(ões) novas. Continuar?`)) return;
             const previous=JSON.stringify(masterQuestions);
             try{
-                questions.forEach(q=>{ if(!masterQuestions[q.topicId]) masterQuestions[q.topicId]=[]; masterQuestions[q.topicId].push(q); });
+                questions.forEach(q=>{if(!masterQuestions[q.topicId]) masterQuestions[q.topicId]=[]; masterQuestions[q.topicId].push(q);});
                 localStorage.setItem('ctrb_questions_data',JSON.stringify(masterQuestions));
                 if(window.saveQuestionsBatchToCloud) await window.saveQuestionsBatchToCloud(questions);
-                else if(window.saveQuestionToCloud){ for(const q of questions) await window.saveQuestionToCloud(q); }
+                else for(const q of questions) await window.saveQuestionToCloud(q);
                 closeBatchQuestionModal(); renderMainContent();
                 alert(`${questions.length} questão(ões) importada(s) e sincronizada(s) com sucesso.`);
             }catch(err){
@@ -3167,8 +3095,8 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc, writeBatch,
-    onSnapshot
+    getFirestore, collection, doc, getDoc, getDocs, setDoc, deleteDoc,
+    onSnapshot, writeBatch
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -3535,22 +3463,6 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     await deleteDoc(doc(db, 'modulos', tid));
   };
 
-  window.saveQuestionsBatchToCloud = async function(questionList) {
-    const list=Array.isArray(questionList)?questionList:[];
-    for(let start=0; start<list.length; start+=450){
-      const chunk=list.slice(start,start+450);
-      const batch=writeBatch(db);
-      chunk.forEach(questionData=>{
-        if(!questionData || !questionData.id) throw new Error('Questão sem ID.');
-        const qid=safeDocId(questionData.id);
-        batch.set(doc(db,'questoes',qid),{...questionData,updatedAt:nowISO()},{merge:true});
-        batch.delete(doc(db,'questoes_excluidas',qid));
-      });
-      await batch.commit();
-      chunk.forEach(q=>deletedQuestionIds.delete(safeDocId(q.id)));
-    }
-  };
-
   window.saveQuestionToCloud = async function(questionData) {
     if (!questionData || !questionData.id) throw new Error('Questão sem ID.');
     const qid = safeDocId(questionData.id);
@@ -3561,6 +3473,23 @@ REGRA ABSOLUTA PARA FUTURAS ALTERAÇÕES:
     // Salvar explicitamente uma questão significa que ela foi criada/recriada.
     await deleteDoc(doc(db, 'questoes_excluidas', qid));
     deletedQuestionIds.delete(qid);
+  };
+
+  window.saveQuestionsBatchToCloud = async function(questionList) {
+    if (!Array.isArray(questionList) || !questionList.length) return;
+    const chunks = [];
+    for (let i = 0; i < questionList.length; i += 450) chunks.push(questionList.slice(i, i + 450));
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      chunk.forEach(questionData => {
+        if (!questionData || !questionData.id) throw new Error('Questão sem ID.');
+        const qid = safeDocId(questionData.id);
+        batch.set(doc(db, 'questoes', qid), { ...questionData, updatedAt: nowISO() }, { merge: true });
+        batch.delete(doc(db, 'questoes_excluidas', qid));
+      });
+      await batch.commit();
+      chunk.forEach(questionData => deletedQuestionIds.delete(safeDocId(questionData.id)));
+    }
   };
 
   window.deleteQuestionFromCloud = async function(questionId) {
